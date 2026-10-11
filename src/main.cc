@@ -2,6 +2,7 @@
 #include <NickelHook.h>
 
 #include <pthread.h>
+#include <stdio.h>
 #include <unistd.h>
 
 #include <QCoreApplication>
@@ -34,6 +35,14 @@ void *waitForApplication(void *) {
     }
     scheduleStart();
     return 0;
+}
+
+// NickelHook removes the library itself; this removes the menu entry the mod
+// generated. The folder with config.ini, state.json and log.txt stays.
+bool uninstall() {
+    if (unlink("/mnt/onboard/.adds/nm/kosync") == 0)
+        nh_log("kosync: removed the NickelMenu entry");
+    return true;
 }
 
 int init() {
@@ -86,5 +95,5 @@ NickelHook(
     .info = &info,
     .hook = hooks,
     .dlsym = symbols,
-    .uninstall = 0,
+    .uninstall = uninstall,
 )

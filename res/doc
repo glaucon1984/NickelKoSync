@@ -48,8 +48,9 @@ state.json          the mod's memory: device id, what was pushed and applied
 log.txt             what happened, newest at the end (log.txt.1 is older)
 sync-now            create this empty file to trigger a sync
 settings            create this empty file to open the KOSync screen
-uninstall           create this empty file and reboot to remove the mod
-                    (also delete .adds/nm/kosync if NickelMenu is installed)
+uninstall           create this empty file and reboot to remove the mod; it
+                    also removes its NickelMenu entry. Delete this folder
+                    afterwards if you want the settings and log gone too.
 
 Notes
 -----

@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.1 — 2026-10-11
+
+- Uninstall also removes the generated NickelMenu entry; README documents the uninstall
+  steps.
+
 ## v0.1.0 — 2026-10-11
 
 First release.

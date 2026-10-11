@@ -110,7 +110,7 @@ Everything lives in `.adds/kosync/`:
 - `state.json` — the device id and what was pushed or applied per book.
 - `log.txt` — the log (rotated at 256 KB to `log.txt.1`).
 - `sync-now` — create this empty file to trigger a sync.
-- `uninstall` — create this empty file and reboot to remove the mod.
+- `uninstall` — create this empty file and reboot to remove the mod (see Uninstall).
 
 ## What to expect while reading
 
@@ -122,6 +122,18 @@ Everything lives in `.adds/kosync/`:
   from outside).
 - Positions are compared by paragraph. A reader that reopens an applied position reports it
   as its own slightly different XPointer, which is not sent back as a new position.
+
+## Uninstall
+
+1. Connect the Kobo over USB and create an empty file named `uninstall` in `.adds/kosync`
+   (next to `config.ini`).
+2. Eject. On the next start the mod sees the file, deletes its library from the firmware and
+   removes the `KOSync` menu entry it generated, then Nickel carries on without it.
+3. Delete the `.adds/kosync` folder yourself if you also want the settings, the log and the
+   state file gone. Nothing else on the device is touched: Nickel's library keeps whatever
+   positions were last written, and Kobalt's files are untouched.
+
+Installing a newer `KoboRoot.tgz` over an existing installation needs no uninstall.
 
 ## Troubleshooting
 
