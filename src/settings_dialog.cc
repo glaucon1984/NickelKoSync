@@ -45,10 +45,10 @@ QString dialogStyle() {
                "QLabel#choiceName { font-size: %1px; }"
                "QLabel#choiceCurrent { font-size: %4px; font-style: italic; color: #404040; }"
                "QLabel#choiceDescription { font-size: %4px; color: #404040; }")
-        .arg(scale(27))
-        .arg(scale(38))
-        .arg(scale(20))
-        .arg(scale(22));
+        .arg(scale(29))
+        .arg(scale(40))
+        .arg(scale(21))
+        .arg(scale(23));
 }
 
 QStringList list(const char *a, const char *b, const char *c = 0) {
@@ -99,14 +99,14 @@ SettingRow::SettingRow(const QString &label, bool toggle, QWidget *parent) : QWi
     QHBoxLayout *layout = new QHBoxLayout(this);
     layout->setContentsMargins(scale(8), scale(18), scale(8), scale(18));
     layout->setSpacing(scale(16));
+    // The label takes its natural width; the value gets the rest of the row.
     label_ = new QLabel(label, this);
-    label_->setWordWrap(true);
     value_ = new QLabel(this);
     value_->setObjectName("value");
     value_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     value_->setWordWrap(true);
-    layout->addWidget(label_, 3);
-    layout->addWidget(value_, 2);
+    layout->addWidget(label_, 0);
+    layout->addWidget(value_, 1);
     if (toggle) {
         switch_ = new ToggleSwitch(this);
         layout->addWidget(switch_, 0, Qt::AlignVCenter);
@@ -145,7 +145,7 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     setWindowModality(Qt::ApplicationModal);
     setStyleSheet(dialogStyle());
     QFont base = font();
-    base.setPixelSize(scale(27));
+    base.setPixelSize(scale(29));
     setFont(base);
 
     QVBoxLayout *outer = new QVBoxLayout(this);
