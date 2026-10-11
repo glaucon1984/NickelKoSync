@@ -42,13 +42,14 @@ QString dialogStyle() {
                "QPushButton#action:pressed { background: white; color: black; }"
                "QPushButton#plain { border: none; padding: 4px 12px; }"
                "kosync--ChoiceRow { border-bottom: 1px solid #a0a0a0; background: white; }"
+               "kosync--RadioMark { background: transparent; }"
                "QLabel#choiceName { font-size: %1px; }"
                "QLabel#choiceCurrent { font-size: %4px; font-style: italic; color: #404040; }"
                "QLabel#choiceDescription { font-size: %4px; color: #404040; }")
-        .arg(scale(31))
-        .arg(scale(42))
-        .arg(scale(22))
-        .arg(scale(24));
+        .arg(scale(33))
+        .arg(scale(44))
+        .arg(scale(23))
+        .arg(scale(25));
 }
 
 QStringList list(const char *a, const char *b, const char *c = 0) {
@@ -145,7 +146,7 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     setWindowModality(Qt::ApplicationModal);
     setStyleSheet(dialogStyle());
     QFont base = font();
-    base.setPixelSize(scale(31));
+    base.setPixelSize(scale(33));
     setFont(base);
 
     QVBoxLayout *outer = new QVBoxLayout(this);
@@ -341,28 +342,50 @@ void SettingsDialog::cycle() {
 
 // ---------------------------------------------------------------------------
 
+RadioMark::RadioMark(bool selected, QWidget *parent) : QWidget(parent), selected_(selected) {
+    setFixedSize(sizeHint());
+}
+
+QSize RadioMark::sizeHint() const {
+    return QSize(scale(40), scale(40));
+}
+
+void RadioMark::paintEvent(QPaintEvent *) {
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    const int border = qMax(2, scale(3));
+    const QRectF ring = QRectF(rect()).adjusted(border, border, -border, -border);
+    painter.setPen(QPen(Qt::black, border));
+    painter.setBrush(Qt::white);
+    painter.drawEllipse(ring);
+    if (selected_) {
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(Qt::black);
+        const qreal inset = ring.width() / 4;
+        painter.drawEllipse(ring.adjusted(inset, inset, -inset, -inset));
+    }
+}
+
 ChoiceRow::ChoiceRow(const QString &name, const QString &description, bool current, QWidget *parent)
     : QWidget(parent) {
     setAttribute(Qt::WA_StyledBackground, true);
-    QVBoxLayout *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(scale(16), scale(16), scale(16), scale(16));
-    layout->setSpacing(scale(6));
-    QHBoxLayout *top = new QHBoxLayout;
+    QHBoxLayout *layout = new QHBoxLayout(this);
+    layout->setContentsMargins(scale(12), scale(16), scale(16), scale(16));
+    layout->setSpacing(scale(16));
+    layout->addWidget(new RadioMark(current, this), 0, Qt::AlignTop);
+    QVBoxLayout *text = new QVBoxLayout;
+    text->setContentsMargins(0, 0, 0, 0);
+    text->setSpacing(scale(6));
     QLabel *title = new QLabel(name, this);
     title->setObjectName("choiceName");
-    top->addWidget(title, 1);
-    if (current) {
-        QLabel *mark = new QLabel("Current", this);
-        mark->setObjectName("choiceCurrent");
-        top->addWidget(mark);
-    }
-    layout->addLayout(top);
+    text->addWidget(title);
     if (!description.isEmpty()) {
-        QLabel *text = new QLabel(description, this);
-        text->setObjectName("choiceDescription");
-        text->setWordWrap(true);
-        layout->addWidget(text);
+        QLabel *body = new QLabel(description, this);
+        body->setObjectName("choiceDescription");
+        body->setWordWrap(true);
+        text->addWidget(body);
     }
+    layout->addLayout(text, 1);
 }
 
 void ChoiceRow::mousePressEvent(QMouseEvent *event) {

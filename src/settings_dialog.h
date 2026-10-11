@@ -39,7 +39,21 @@ private:
     bool on_ = false;
 };
 
-// One choice in the pop-up: its name, what it does, and whether it is current.
+// A radio-button circle, filled when selected.
+class RadioMark : public QWidget {
+    Q_OBJECT
+public:
+    explicit RadioMark(bool selected, QWidget *parent = 0);
+    QSize sizeHint() const;
+
+protected:
+    void paintEvent(QPaintEvent *event);
+
+private:
+    bool selected_;
+};
+
+// One choice in the pop-up: a radio mark, its name and what it does.
 class ChoiceRow : public QWidget {
     Q_OBJECT
 public:
