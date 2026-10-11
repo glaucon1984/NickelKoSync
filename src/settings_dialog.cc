@@ -1,5 +1,7 @@
 #include "settings_dialog.h"
 
+#include "text_entry.h"
+
 #include <QApplication>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -38,7 +40,8 @@ QStringList list(const char *a, const char *b, const char *c = 0) {
 
 }
 
-SettingsDialog::SettingsDialog(const Config &config, QWidget *parent) : QDialog(parent) {
+SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
+    : QDialog(parent), url_(config.url), username_(config.username), hasPassword_(!config.userKey.isEmpty()) {
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
     setWindowModality(Qt::ApplicationModal);
     setStyleSheet(dialogStyle);
@@ -94,6 +97,12 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent) : QDialog(
     scroll->setWidget(inner);
     outer->addWidget(scroll, 1);
 
+    addAccountButton("url", "Server");
+    addAccountButton("username", "Username");
+    addAccountButton("password", "Password");
+    for (int i = 0; i < account_.size(); ++i)
+        rows->addWidget(account_[i]);
+
     addOption("sync", "pull", "Positions from other devices", list("newer", "forward", "off"),
               list("newest wins", "only when further ahead", "never move"), int(config.pull));
     addOption("sync", "push", "Send this device's progress", list("true", "false"), list("yes", "no"),
@@ -139,6 +148,58 @@ void SettingsDialog::addOption(const char *section, const char *key, const char 
     options_.append(option);
 }
 
+void SettingsDialog::addAccountButton(const char *key, const char *label) {
+    QPushButton *button = new QPushButton(this);
+    button->setMinimumHeight(scale(120));
+    button->setProperty("key", QString::fromUtf8(key));
+    button->setProperty("label", QString::fromUtf8(label));
+    button->setText(QString::fromUtf8(label) + "\n" + accountText(QString::fromUtf8(key)));
+    connect(button, SIGNAL(clicked()), this, SLOT(editAccount()));
+    account_.append(button);
+}
+
+QString SettingsDialog::accountText(const QString &key) const {
+    if (key == "url")
+        return url_.isEmpty() ? QString("not set") : url_;
+    if (key == "username")
+        return username_.isEmpty() ? QString("not set") : username_;
+    return hasPassword_ ? QString::fromUtf8("\xE2\x80\xA2\xE2\x80\xA2\xE2\x80\xA2\xE2\x80\xA2\xE2\x80\xA2\xE2\x80\xA2")
+                        : QString("not set");
+}
+
+void SettingsDialog::editAccount() {
+    QObject *button = sender();
+    if (!button)
+        return;
+    const QString key = button->property("key").toString();
+    const QString label = button->property("label").toString();
+    const bool password = key == "password";
+    const QString initial = key == "url" ? url_ : key == "username" ? username_ : QString();
+    TextEntryDialog *entry = new TextEntryDialog(label, initial, password, this);
+    entry->setAttribute(Qt::WA_DeleteOnClose);
+    connect(entry, &QDialog::accepted, this, [this, entry, key, password] {
+        const QString value = entry->value().trimmed();
+        if (password && value.isEmpty())
+            return;
+        if (onSet) {
+            onSet("server", key.toUtf8().constData(), value);
+            if (password)
+                onSet("server", "password_md5", QString());  // the plain password now rules
+        }
+        if (key == "url")
+            url_ = value;
+        else if (key == "username")
+            username_ = value;
+        else
+            hasPassword_ = true;
+        for (int i = 0; i < account_.size(); ++i) {
+            const QString k = account_[i]->property("key").toString();
+            account_[i]->setText(account_[i]->property("label").toString() + "\n" + accountText(k));
+        }
+    });
+    entry->show();
+}
+
 QString SettingsDialog::text(const Option &option) {
     return QString::fromUtf8(option.label) + "\n" + option.names.value(option.index);
 }
@@ -158,6 +219,13 @@ void SettingsDialog::cycle() {
 }
 
 void SettingsDialog::refresh(const Config &config) {
+    url_ = config.url;
+    username_ = config.username;
+    hasPassword_ = !config.userKey.isEmpty();
+    for (int i = 0; i < account_.size(); ++i) {
+        const QString k = account_[i]->property("key").toString();
+        account_[i]->setText(account_[i]->property("label").toString() + "\n" + accountText(k));
+    }
     for (int i = 0; i < options_.size(); ++i) {
         Option &option = options_[i];
         const QString key = QString::fromUtf8(option.key);

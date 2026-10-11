@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- KOSync screen from the NickelMenu entry: sync buttons and on-device settings.
+- KOSync screen from the NickelMenu entry: sync buttons, on-device settings, and the
+  server, username and password typed on an on-screen keyboard.
 - Nickel notification after a sync, summarised to three lines.
 - A book is checked when it is opened and when the device wakes with it open.
 - A book only opened here (0%) never overrides another device's position; explicit

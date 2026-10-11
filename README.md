@@ -56,16 +56,17 @@ Nickel's reader only.
 1. Download `KoboRoot.tgz` from the latest release.
 2. Connect the Kobo over USB and copy it to the hidden `.kobo` folder on the device.
 3. Eject. The Kobo reboots and installs the mod.
-4. Copy `.adds/kosync/config.sample.ini` to `.adds/kosync/config.ini` and fill in the
-   `[server]` section with the account you use in KOReader's *Progress sync*. No reboot
-   is needed; the mod re-reads the file when it changes.
+4. Enter the server, username and password of the account you use in KOReader's
+   *Progress sync*: either from the *KOSync* entry in NickelMenu's main menu, or by copying
+   `.adds/kosync/config.sample.ini` to `config.ini` and filling in `[server]` over USB. No
+   reboot is needed; the mod re-reads the file when it changes.
 5. Check `.adds/kosync/log.txt` after the first sync: it should say
    `signed in to <server> as <user>`.
 
 With [NickelMenu](https://pgaskin.net/NickelMenu/) installed, the mod adds a *KOSync* entry
 to the main menu by itself (turn it off with `menu = false`). It opens the KOSync screen:
-*Sync now*, *Check whole library*, and the settings as buttons that cycle through their
-values. `menu_log = true` adds a *KOSync log* entry that shows the last lines of the log.
+*Sync now*, *Check whole library*, the server, username and password (typed on an on-screen
+keyboard), and the other settings as buttons that cycle through their values. `menu_log = true` adds a *KOSync log* entry that shows the last lines of the log.
 After each sync Nickel's notification bubble lists what moved or was sent, three lines at
 most ("and N more").
 

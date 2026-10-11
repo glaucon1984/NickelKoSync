@@ -33,6 +33,7 @@ public:
 
 private slots:
     void cycle();
+    void editAccount();
 
 private:
     struct Option {
@@ -45,8 +46,14 @@ private:
                    const QStringList &names, int index);
     static QString text(const Option &option);
 
+    void addAccountButton(const char *key, const char *label);
+    QString accountText(const QString &key) const;
+
     QVector<Option> options_;
+    QVector<QPushButton *> account_;
     QLabel *status_ = 0;
+    QString url_, username_;
+    bool hasPassword_ = false;
 };
 
 }

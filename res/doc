@@ -32,8 +32,9 @@ How it syncs
 - Opening a book, or waking the device with a book open, checks that book.
 - With NickelMenu installed the mod adds a "KOSync" entry to the main menu
   (menu = false removes it). It opens the KOSync screen: Sync now, Check whole
-  library, and the settings as buttons that cycle through their values. The
-  server address and account stay in config.ini.
+  library, the server address, username and password (typed on the screen's
+  own keyboard), and the other settings as buttons that cycle through their
+  values. Everything is saved to config.ini.
 - After a sync, Nickel's notification bubble lists what moved or was sent
   (notify = false turns it off).
 - A book that has only been opened here, at the cover, never overrides what
