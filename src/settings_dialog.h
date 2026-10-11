@@ -19,15 +19,33 @@ class QLabel;
 class QLayout;
 class QShowEvent;
 class QMouseEvent;
+class QPaintEvent;
 
 namespace kosync {
+
+// A pill-shaped on/off switch, drawn like Kobo's.
+class ToggleSwitch : public QWidget {
+    Q_OBJECT
+public:
+    explicit ToggleSwitch(QWidget *parent = 0);
+    void setOn(bool on);
+    bool isOn() const { return on_; }
+    QSize sizeHint() const;
+
+protected:
+    void paintEvent(QPaintEvent *event);
+
+private:
+    bool on_ = false;
+};
 
 // One tappable row: label left, value right, separator below.
 class SettingRow : public QWidget {
     Q_OBJECT
 public:
-    SettingRow(const QString &label, QWidget *parent = 0);
+    SettingRow(const QString &label, bool toggle, QWidget *parent = 0);
     void setValue(const QString &value);
+    void setOn(bool on);
 
 signals:
     void clicked();
@@ -38,6 +56,7 @@ protected:
 
 private:
     QLabel *label_ = 0, *value_ = 0;
+    ToggleSwitch *switch_ = 0;
     bool pressed_ = false;
 };
 
@@ -68,6 +87,7 @@ private:
         QStringList values, names;
         SettingRow *row = 0;
         int index = 0;
+        bool toggle = false;
     };
     QWidget *section(const QString &title);
     void addOption(QLayout *layout, const char *section, const char *key, const char *label, const QStringList &values,

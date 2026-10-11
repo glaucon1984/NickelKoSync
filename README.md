@@ -21,9 +21,10 @@ process as both readers and works at that storage layer:
   Nickel's chapter position translated into an XPointer through the chapter's XHTML)
   and sends it to the server with the percentage read. Offline, it asks Nickel to turn
   Wi-Fi on and sends as soon as the device is online.
-- **Pull.** Whenever the device is online it checks books against the server: the whole
-  library at start, after Nickel's own Sync and on request, the recently read books every
-  15 minutes while online, and a book when it is opened or the device wakes with it open. A newer position from another device is written into Kobalt's
+- **Pull.** Whenever the device is online it checks books against the server: the recently
+  read books at start, after Nickel's own Sync, on request and every 15 minutes while
+  online; a book when it is opened or the device wakes with it open; and the whole library
+  from *Check whole library* on the KOSync screen. A newer position from another device is written into Kobalt's
   saved state and into Nickel's library, so the next opening starts there, also for books
   never opened on the Kobo. If Kobalt has that book open at the time, Kobalt itself offers
   to jump there, as it does for any position changed outside it.

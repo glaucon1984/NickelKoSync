@@ -25,10 +25,11 @@ How it syncs
   time, in Kobalt and in Nickel's reader alike. If Kobalt has that very book
   open, Kobalt itself offers to move there (its usual message for a position
   changed elsewhere).
-- A full check of the library (so a book begun on another device opens at
-  the right place the first time here) runs at start, after Nickel's own Sync
-  and on request from the KOSync screen, or with an empty file named sync-now
-  in this folder.
+- Start, Nickel's own Sync, a sync-now file in this folder and "Sync now" on
+  the KOSync screen check the recently read books. "Check whole library" on
+  the KOSync screen checks every EPUB on the device (a second or two per
+  book), so a book begun on another device opens at the right place the first
+  time here.
 - Opening a book, or waking the device with a book open, checks that book.
 - With NickelMenu installed the mod adds a "KOSync" entry to the main menu
   (menu = false removes it). It opens the KOSync screen: Sync now, Check whole

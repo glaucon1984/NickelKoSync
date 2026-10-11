@@ -113,9 +113,9 @@ void Controller::start() {
             setBookState(row.contentId, book);
         }
     }
-    // The whole library once per start, so books begun on another device open
-    // at the right place the first time.
-    enqueueAll("start");
+    // The recently read books at start; the whole library only on request
+    // from the KOSync screen, as it takes a few seconds per book.
+    enqueueRecent("start");
 }
 
 void Controller::loadConfig() {
@@ -253,7 +253,7 @@ void Controller::onConfigDirectoryChanged() {
         QFile::remove(syncNowFile);
         log("sync requested");
         lastWifiRequest_ = 0;
-        enqueueAll("sync-now");
+        enqueueRecent("sync-now");
         if (!online())
             requestWifi();
     }
@@ -328,7 +328,7 @@ void Controller::tick() {
 
 void Controller::onNickelSyncFinished() {
     debug("Nickel finished its own sync");
-    enqueueAll("Nickel sync");
+    enqueueRecent("Nickel sync");
 }
 
 // ---------------------------------------------------------------------------
@@ -506,8 +506,16 @@ void Controller::finishBook(const QString &contentId, bool success) {
     saveState();
     if (queue_.isEmpty())
         flushEvents();
+    else
+        QTimer::singleShot(200, this, SLOT(continueQueue()));  // next book without waiting for the timer
     if (dialog_)
         dialog_->setStatus(statusText());
+}
+
+void Controller::continueQueue() {
+    if (!configOk_ || authFailed_ || inFlight_ || queue_.isEmpty() || nowSeconds() < retryAfter_ || !online())
+        return;
+    processQueue();
 }
 
 void Controller::syncBook(const QString &contentId) {

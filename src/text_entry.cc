@@ -62,14 +62,16 @@ TextEntryDialog::TextEntryDialog(const QString &title, const QString &initial, b
     QHBoxLayout *field = new QHBoxLayout;
     field->setSpacing(scale(16));
     edit_ = new QLineEdit(initial, this);
-    edit_->setMinimumHeight(scale(84));
-    edit_->setFont(base);
+    edit_->setMinimumHeight(scale(110));
+    QFont entryFont = base;
+    entryFont.setPixelSize(scale(34));
+    edit_->setFont(entryFont);
     if (password)
         edit_->setEchoMode(QLineEdit::Password);
     field->addWidget(edit_, 1);
     if (password) {
         echo_ = new QPushButton("Show", this);
-        echo_->setMinimumSize(scale(140), scale(84));
+        echo_->setMinimumSize(scale(140), scale(110));
         connect(echo_, SIGNAL(clicked()), this, SLOT(toggleEcho()));
         field->addWidget(echo_);
     }

@@ -49,6 +49,7 @@ private slots:
     void tick();
     void networkTick();
     void onNickelSyncFinished();
+    void continueQueue();
 
 private:
     // configuration and persistent state

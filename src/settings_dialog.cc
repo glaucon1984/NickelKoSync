@@ -7,6 +7,8 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMouseEvent>
+#include <QPainter>
+#include <QPixmap>
 #include <QPushButton>
 #include <QScreen>
 #include <QShowEvent>
@@ -29,7 +31,8 @@ const char *const dialogStyle =
     "QLabel#section { background: #d8d8d8; color: #202020; padding: 6px 10px; }"
     "QLabel#value { color: #202020; font-style: italic; }"
     "QLabel#status { color: #404040; }"
-    "kosync--SettingRow { border-bottom: 1px solid #909090; background: white; }"
+    "kosync--SettingRow { border-bottom: 1px solid #a0a0a0; background: white; }"
+    "kosync--ToggleSwitch { background: transparent; }"
     "QPushButton { color: black; background: white; border: 2px solid black; border-radius: 8px; padding: 8px 16px; }"
     "QPushButton:pressed { color: white; background: black; }"
     "QPushButton#action { background: black; color: white; }"
@@ -48,10 +51,41 @@ QStringList list(const char *a, const char *b, const char *c = 0) {
 
 // ---------------------------------------------------------------------------
 
-SettingRow::SettingRow(const QString &label, QWidget *parent) : QWidget(parent) {
+ToggleSwitch::ToggleSwitch(QWidget *parent) : QWidget(parent) {
+    setFixedSize(sizeHint());
+}
+
+QSize ToggleSwitch::sizeHint() const {
+    return QSize(scale(74), scale(38));
+}
+
+void ToggleSwitch::setOn(bool on) {
+    if (on_ == on)
+        return;
+    on_ = on;
+    update();
+}
+
+void ToggleSwitch::paintEvent(QPaintEvent *) {
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    const int border = qMax(2, scale(3));
+    const QRectF track = QRectF(rect()).adjusted(border, border, -border, -border);
+    const qreal radius = track.height() / 2;
+    painter.setPen(QPen(Qt::black, border));
+    painter.setBrush(on_ ? Qt::black : Qt::white);
+    painter.drawRoundedRect(track, radius, radius);
+    const qreal knob = track.height() - 2 * border;
+    const QRectF circle(on_ ? track.right() - knob - border : track.left() + border, track.top() + border, knob, knob);
+    painter.setPen(QPen(on_ ? Qt::white : Qt::black, border));
+    painter.setBrush(on_ ? Qt::white : Qt::black);
+    painter.drawEllipse(circle);
+}
+
+SettingRow::SettingRow(const QString &label, bool toggle, QWidget *parent) : QWidget(parent) {
     setAttribute(Qt::WA_StyledBackground, true);
     QHBoxLayout *layout = new QHBoxLayout(this);
-    layout->setContentsMargins(scale(10), scale(14), scale(10), scale(14));
+    layout->setContentsMargins(scale(8), scale(18), scale(8), scale(18));
     layout->setSpacing(scale(16));
     label_ = new QLabel(label, this);
     label_->setWordWrap(true);
@@ -61,11 +95,20 @@ SettingRow::SettingRow(const QString &label, QWidget *parent) : QWidget(parent) 
     value_->setWordWrap(true);
     layout->addWidget(label_, 3);
     layout->addWidget(value_, 2);
-    setMinimumHeight(scale(64));
+    if (toggle) {
+        switch_ = new ToggleSwitch(this);
+        layout->addWidget(switch_, 0, Qt::AlignVCenter);
+    }
+    setMinimumHeight(scale(72));
 }
 
 void SettingRow::setValue(const QString &value) {
     value_->setText(value);
+}
+
+void SettingRow::setOn(bool on) {
+    if (switch_)
+        switch_->setOn(on);
 }
 
 void SettingRow::mousePressEvent(QMouseEvent *event) {
@@ -90,23 +133,38 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     setWindowModality(Qt::ApplicationModal);
     setStyleSheet(dialogStyle);
     QFont base = font();
-    base.setPixelSize(scale(22));
+    base.setPixelSize(scale(20));
     setFont(base);
 
     QVBoxLayout *outer = new QVBoxLayout(this);
-    outer->setContentsMargins(scale(32), scale(24), scale(32), scale(24));
-    outer->setSpacing(scale(8));
+    outer->setContentsMargins(scale(40), scale(28), scale(40), scale(28));
+    outer->setSpacing(scale(14));
 
     // Title bar: name on the left, close on the right.
     QHBoxLayout *bar = new QHBoxLayout;
     QLabel *title = new QLabel("KOSync", this);
     QFont titleFont = base;
-    titleFont.setPixelSize(scale(32));
+    titleFont.setPixelSize(scale(30));
     title->setFont(titleFont);
     bar->addWidget(title, 1);
     QPushButton *close = new QPushButton("Close", this);
     close->setObjectName("plain");
     close->setMinimumHeight(scale(60));
+    {
+        // The UI font has no glyph for a cross; draw one.
+        const int size = scale(26);
+        QPixmap cross(size, size);
+        cross.fill(Qt::transparent);
+        QPainter painter(&cross);
+        painter.setRenderHint(QPainter::Antialiasing, true);
+        painter.setPen(QPen(Qt::black, qMax(2, scale(3)), Qt::SolidLine, Qt::RoundCap));
+        const int inset = size / 5;
+        painter.drawLine(inset, inset, size - inset, size - inset);
+        painter.drawLine(size - inset, inset, inset, size - inset);
+        close->setIcon(QIcon(cross));
+        close->setIconSize(QSize(size, size));
+        close->setLayoutDirection(Qt::RightToLeft);  // icon after the text
+    }
     connect(close, &QPushButton::clicked, this, &QDialog::accept);
     bar->addWidget(close);
     outer->addLayout(bar);
@@ -115,14 +173,14 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     actions->setSpacing(scale(20));
     QPushButton *syncNow = new QPushButton("Sync now", this);
     syncNow->setObjectName("action");
-    syncNow->setMinimumHeight(scale(68));
+    syncNow->setMinimumHeight(scale(64));
     connect(syncNow, &QPushButton::clicked, this, [this] {
         if (onSync)
             onSync(false);
     });
     QPushButton *syncAll = new QPushButton("Check whole library", this);
     syncAll->setObjectName("action");
-    syncAll->setMinimumHeight(scale(68));
+    syncAll->setMinimumHeight(scale(64));
     connect(syncAll, &QPushButton::clicked, this, [this] {
         if (onSync)
             onSync(true);
@@ -135,12 +193,12 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     status_->setObjectName("status");
     status_->setWordWrap(true);
     QFont small = base;
-    small.setPixelSize(scale(19));
+    small.setPixelSize(scale(17));
     status_->setFont(small);
     outer->addWidget(status_);
 
     QVBoxLayout *rows = new QVBoxLayout;
-    rows->setContentsMargins(0, 0, 0, 0);
+    rows->setContentsMargins(0, scale(6), 0, 0);
     rows->setSpacing(0);
     outer->addLayout(rows);
 
@@ -152,10 +210,10 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     rows->addWidget(section("SYNC"));
     addOption(rows, "sync", "pull", "Other devices' positions", list("newer", "forward", "off"),
               list("Newest wins", "Forward only", "Ignore"), int(config.pull));
-    addOption(rows, "sync", "push", "Send my progress", list("true", "false"), list("Yes", "No"),
+    addOption(rows, "sync", "push", "Send my progress", list("true", "false"), list("On", "Off"),
               config.push ? 0 : 1);
     addOption(rows, "sync", "on_open", "Check on open and wake", list("true", "false"),
-              list("Yes", "No"), config.onOpen ? 0 : 1);
+              list("On", "Off"), config.onOpen ? 0 : 1);
     addOption(rows, "wifi", "mode", "Wi-Fi", list("connect", "keep"), list("Connect if needed", "Leave alone"),
               config.connectWifi ? 0 : 1);
     addOption(rows, "sync", "document_id", "Match books by", list("binary", "filename"),
@@ -164,7 +222,7 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     rows->addWidget(section("OPTIONS"));
     addOption(rows, "options", "notify", "Notifications", list("true", "false"), list("On", "Off"),
               config.notify ? 0 : 1);
-    addOption(rows, "options", "menu_log", "Log entry in the menu", list("true", "false"), list("Yes", "No"),
+    addOption(rows, "options", "menu_log", "Log entry in the menu", list("true", "false"), list("On", "Off"),
               config.menuLog ? 0 : 1);
     addOption(rows, "options", "verbose", "Detailed log", list("true", "false"), list("On", "Off"),
               config.verbose ? 0 : 1);
@@ -179,10 +237,10 @@ QWidget *SettingsDialog::section(const QString &title) {
     QLabel *label = new QLabel(title, this);
     label->setObjectName("section");
     QFont f = font();
-    f.setPixelSize(scale(16));
+    f.setPixelSize(scale(15));
     f.setBold(true);
     label->setFont(f);
-    label->setMinimumHeight(scale(36));
+    label->setMinimumHeight(scale(34));
     return label;
 }
 
@@ -194,16 +252,18 @@ void SettingsDialog::addOption(QLayout *layout, const char *section, const char 
     option.values = values;
     option.names = names;
     option.index = qBound(0, index, values.size() - 1);
-    option.row = new SettingRow(QString::fromUtf8(label), this);
+    option.toggle = values.size() == 2 && values[0] == "true" && values[1] == "false";
+    option.row = new SettingRow(QString::fromUtf8(label), option.toggle, this);
     option.row->setProperty("option", options_.size());
     option.row->setValue(names.value(option.index));
+    option.row->setOn(option.index == 0);
     connect(option.row, SIGNAL(clicked()), this, SLOT(cycle()));
     layout->addWidget(option.row);
     options_.append(option);
 }
 
 void SettingsDialog::addAccount(QLayout *layout, const char *key, const char *label) {
-    SettingRow *row = new SettingRow(QString::fromUtf8(label), this);
+    SettingRow *row = new SettingRow(QString::fromUtf8(label), false, this);
     row->setProperty("key", QString::fromUtf8(key));
     row->setProperty("label", QString::fromUtf8(label));
     row->setValue(accountText(QString::fromUtf8(key)));
@@ -236,6 +296,7 @@ void SettingsDialog::cycle() {
     Option &option = options_[index];
     option.index = (option.index + 1) % option.values.size();
     option.row->setValue(option.names[option.index]);
+    option.row->setOn(option.index == 0);
     if (onSet)
         onSet(option.section, option.key, option.values[option.index]);
 }
@@ -297,6 +358,7 @@ void SettingsDialog::refresh(const Config &config) {
             index = config.verbose ? 0 : 1;
         option.index = qBound(0, index, option.values.size() - 1);
         option.row->setValue(option.names[option.index]);
+        option.row->setOn(option.index == 0);
     }
 }
 
