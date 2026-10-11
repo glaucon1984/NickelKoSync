@@ -21,14 +21,16 @@ process as both readers and works at that storage layer:
   Nickel's chapter position translated into an XPointer through the chapter's XHTML)
   and sends it to the server with the percentage read. Offline, it asks Nickel to turn
   Wi-Fi on and sends as soon as the device is online.
-- **Pull.** Whenever the device is online (and every 15 minutes while it stays so, after
-  Nickel's own Sync, or on request) it checks the recently read books. A newer position
-  from another device is written into Kobalt's saved state and into Nickel's library, so
-  the next opening starts there. If Kobalt has that book open at the time, Kobalt itself
-  offers to jump there, as it does for any position changed outside it.
+- **Pull.** Whenever the device is online it checks books against the server: the whole
+  library at start, after Nickel's own Sync and on request, the recently read books every
+  15 minutes while online. A newer position from another device is written into Kobalt's
+  saved state and into Nickel's library, so the next opening starts there, also for books
+  never opened on the Kobo. If Kobalt has that book open at the time, Kobalt itself offers
+  to jump there, as it does for any position changed outside it.
 - **Conflicts.** The newest position wins (configurable to forward-only or off). Before
   pushing, the mod always fetches the server's copy, so a stale local position never
-  overwrites a newer one from another device.
+  overwrites a newer one from another device, and a book that has only been opened here
+  (cover, 0%) never overrides what another device stored.
 
 The exchanged positions are the same XPointers KOReader uses
 (`/body/DocFragment[3]/body/div[2]/p[5]/text().17`), so KOReader and CrossPoint land on
@@ -60,8 +62,9 @@ Nickel's reader only.
 5. Check `.adds/kosync/log.txt` after the first sync: it should say
    `signed in to <server> as <user>`.
 
-[NickelMenu](https://pgaskin.net/NickelMenu/) users can add the entries in
-`.adds/kosync/nickelmenu.sample` for a *KOSync now* item and a log viewer.
+With [NickelMenu](https://pgaskin.net/NickelMenu/) installed, the mod adds a *KOSync now*
+entry to the main menu by itself (turn it off with `menu = false`); `menu_log = true` adds a
+*KOSync log* entry that shows the last lines of the log.
 
 ## Configuration
 

@@ -19,6 +19,8 @@ struct BookRow {
 
     QString filePath() const { return contentId.startsWith("file:///") ? contentId.mid(7) : QString(); }
     bool kepub() const { return mimeType.contains("kobo", Qt::CaseInsensitive) || filePath().endsWith(".kepub.epub", Qt::CaseInsensitive); }
+    // Only EPUB files are synced (comics and PDFs have no XPointers).
+    bool epub() const { return mimeType.contains("epub", Qt::CaseInsensitive) || filePath().endsWith(".epub", Qt::CaseInsensitive); }
     qint64 modifiedMs() const;
 };
 
@@ -33,8 +35,10 @@ struct NativeSnapshot {
 namespace nickeldb {
 
 QString databasePath();
-// Sideloaded books by last read time, newest first.
+// Sideloaded books that have been opened, by last read time, newest first.
 QList<BookRow> recentBooks(int limit);
+// Every sideloaded book, opened ones first.
+QList<BookRow> allBooks(int limit);
 BookRow row(const QString &contentId);
 NativeSnapshot snapshot(const BookRow &row);
 

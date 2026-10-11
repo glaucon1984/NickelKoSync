@@ -110,6 +110,25 @@ QList<BookRow> recentBooks(int limit) {
     return rows;
 }
 
+QList<BookRow> allBooks(int limit) {
+    QList<BookRow> rows;
+    withReadOnlyDatabase([&](QSqlDatabase &db) {
+        QSqlQuery query(db);
+        query.prepare(QString("SELECT %1 FROM content WHERE ContentType = 6 AND ContentID LIKE 'file:///%' "
+                              "AND IsDownloaded = 'true' "
+                              "ORDER BY (DateLastRead IS NULL OR DateLastRead = ''), DateLastRead DESC LIMIT ?")
+                          .arg(columns));
+        query.addBindValue(limit);
+        if (!query.exec()) {
+            log("library query failed: " + query.lastError().text());
+            return;
+        }
+        while (query.next())
+            rows.append(rowFromQuery(query));
+    });
+    return rows;
+}
+
 BookRow row(const QString &contentId) {
     BookRow result;
     withReadOnlyDatabase([&](QSqlDatabase &db) {

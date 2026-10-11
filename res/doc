@@ -25,8 +25,13 @@ How it syncs
   time, in Kobalt and in Nickel's reader alike. If Kobalt has that very book
   open, Kobalt itself offers to move there (its usual message for a position
   changed elsewhere).
-- Tapping Sync on Nickel's home screen also triggers a check. With NickelMenu,
-  nickelmenu.sample adds a "KOSync now" entry.
+- A full check of the library (so a book begun on another device opens at
+  the right place the first time here) runs at start, after Nickel's own Sync
+  and on request: the "KOSync now" NickelMenu entry, which the mod adds by
+  itself when NickelMenu is installed (menu / menu_log in config.ini), or an
+  empty file named sync-now in this folder.
+- A book that has only been opened here, at the cover, never overrides what
+  another device stored for it.
 
 Files in this folder
 --------------------
@@ -35,6 +40,7 @@ state.json          the mod's memory: device id, what was pushed and applied
 log.txt             what happened, newest at the end (log.txt.1 is older)
 sync-now            create this empty file to trigger a sync
 uninstall           create this empty file and reboot to remove the mod
+                    (also delete .adds/nm/kosync if NickelMenu is installed)
 
 Notes
 -----

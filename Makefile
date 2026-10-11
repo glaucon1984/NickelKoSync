@@ -11,8 +11,7 @@ ifeq ($(KS_CONFIG_DIR),)
 override KS_CONFIG_DIR := /mnt/onboard/.adds/kosync
 endif
 override CPPFLAGS += -Isrc -DKS_CONFIG_DIR='"$(KS_CONFIG_DIR)"'
-override KOBOROOT += res/doc:$(KS_CONFIG_DIR)/doc res/config.sample.ini:$(KS_CONFIG_DIR)/config.sample.ini \
-                     res/nickelmenu.sample:$(KS_CONFIG_DIR)/nickelmenu.sample
+override KOBOROOT += res/doc:$(KS_CONFIG_DIR)/doc res/config.sample.ini:$(KS_CONFIG_DIR)/config.sample.ini
 
 override SKIPCONFIGURE += strip test
 strip:

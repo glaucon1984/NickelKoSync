@@ -63,6 +63,9 @@ bool readConfig(const QString &path, Config *config, QString *problem) {
 
     ini.beginGroup("options");
     config->verbose = ini.value("verbose", false).toBool();
+    config->menu = ini.value("menu", true).toBool();
+    config->menuLog = ini.value("menu_log", false).toBool();
+    config->maxBooks = qBound(1, ini.value("max_books", 300).toInt(), 2000);
     ini.endGroup();
 
     if (problem) {

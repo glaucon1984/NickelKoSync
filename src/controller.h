@@ -65,6 +65,8 @@ private:
     // the queue
     void enqueue(const QString &contentId, const char *reason);
     void enqueueRecent(const char *reason);
+    void enqueueAll(const char *reason);
+    void writeNickelMenu();
     void processQueue();
     void syncBook(const QString &contentId);
     void finishBook(const QString &contentId, bool success);

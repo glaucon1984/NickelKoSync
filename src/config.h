@@ -35,6 +35,9 @@ struct Config {
 
     // [options]
     bool verbose = false;
+    bool menu = true;      // write a "KOSync now" NickelMenu entry
+    bool menuLog = false;  // also a "KOSync log" entry
+    int maxBooks = 300;    // library size cap for a full check
 
     bool complete() const {
         return !url.isEmpty() && !username.isEmpty() && !userKey.isEmpty();

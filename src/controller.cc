@@ -104,9 +104,11 @@ void Controller::start() {
             book["changed_at"] = double(qMax(row.modifiedMs(), state.modifiedMs) / 1000);
             book["seen"] = currentSeen(row);
             setBookState(row.contentId, book);
-            enqueue(row.contentId, "changed while the mod was not running");
         }
     }
+    // The whole library once per start, so books begun on another device open
+    // at the right place the first time.
+    enqueueAll("start");
 }
 
 void Controller::loadConfig() {
@@ -120,11 +122,43 @@ void Controller::loadConfig() {
         log("not configured: " + problem + " (edit " + QString(configFile) + ")");
         return;
     }
+    writeNickelMenu();
     client_.configure(config_.url, config_.username, config_.userKey, config_.insecure, config_.caFile);
     log(QString("configured: server %1, user %2, document id by %3, pull %4, Wi-Fi %5")
             .arg(config_.url, config_.username, config_.documentId == Config::DocumentFilename ? "filename" : "content",
                  config_.pull == Config::PullOff ? "off" : config_.pull == Config::PullForward ? "forward only" : "newest wins",
                  config_.connectWifi ? "connect when needed" : "leave alone"));
+}
+
+// NickelMenu reads every file in .adds/nm; this one is ours.
+void Controller::writeNickelMenu() {
+    const QString directory = "/mnt/onboard/.adds/nm";
+    const QString path = directory + "/kosync";
+    if (!QFileInfo(directory).isDir())
+        return;
+    QString content;
+    if (config_.menu) {
+        content += "# Written by NickelKoSync from config.ini ([options] menu, menu_log); edits are overwritten.\n";
+        content += "menu_item :main :KOSync now :nickel_wifi :autoconnect\n";
+        content += "  chain_success :cmd_spawn :quiet :touch " KS_CONFIG_DIR "/sync-now\n";
+        if (config_.menuLog)
+            content += "menu_item :main :KOSync log :cmd_output :5000 :tail -n 12 " KS_CONFIG_DIR "/log.txt\n";
+    }
+    QFile existing(path);
+    if (content.isEmpty()) {
+        if (existing.exists() && existing.remove())
+            log("removed the NickelMenu entries");
+        return;
+    }
+    if (existing.open(QIODevice::ReadOnly) && QString::fromUtf8(existing.readAll()) == content)
+        return;
+    existing.close();
+    QSaveFile file(path);
+    const QByteArray bytes = content.toUtf8();
+    if (file.open(QIODevice::WriteOnly) && file.write(bytes) == bytes.size() && file.commit())
+        log("wrote the NickelMenu entries to " + path);
+    else
+        log("cannot write " + path);
 }
 
 void Controller::loadState() {
@@ -210,7 +244,7 @@ void Controller::onConfigDirectoryChanged() {
         QFile::remove(syncNowFile);
         log("sync requested");
         lastWifiRequest_ = 0;
-        enqueueRecent("sync-now");
+        enqueueAll("sync-now");
         if (!online())
             requestWifi();
     }
@@ -267,7 +301,7 @@ void Controller::tick() {
 
 void Controller::onNickelSyncFinished() {
     debug("Nickel finished its own sync");
-    enqueueRecent("Nickel sync");
+    enqueueAll("Nickel sync");
 }
 
 // ---------------------------------------------------------------------------
@@ -276,9 +310,10 @@ void Controller::onNickelSyncFinished() {
 QJsonObject Controller::currentSeen(const BookRow &row) const {
     const kobalt::State state = kobalt::readState(row.contentId);
     QJsonObject seen;
+    // Opening and closing a book changes Nickel's DateLastRead without moving
+    // the position; only the position counts as a change.
     seen["chapter"] = row.chapter;
     seen["percent"] = row.percent;
-    seen["date"] = row.dateLastRead;
     seen["kobalt"] = state.position;
     return seen;
 }
@@ -365,7 +400,19 @@ void Controller::enqueue(const QString &contentId, const char *reason) {
 
 void Controller::enqueueRecent(const char *reason) {
     foreach (const BookRow &row, nickeldb::recentBooks(config_.recentBooks))
+        if (row.epub())
+            enqueue(row.contentId, reason);
+}
+
+void Controller::enqueueAll(const char *reason) {
+    int count = 0;
+    foreach (const BookRow &row, nickeldb::allBooks(config_.maxBooks)) {
+        if (!row.epub())
+            continue;
         enqueue(row.contentId, reason);
+        ++count;
+    }
+    debug(QString("checking %1 books (%2)").arg(count).arg(reason));
 }
 
 void Controller::networkTick() {
@@ -432,8 +479,8 @@ void Controller::finishBook(const QString &contentId, bool success) {
 void Controller::syncBook(const QString &contentId) {
     const BookRow row = nickeldb::row(contentId);
     const QString path = row.filePath();
-    if (!row.valid || path.isEmpty() || !QFile::exists(path)) {
-        debug("skipping " + contentId + ": not a sideloaded book on the device");
+    if (!row.valid || path.isEmpty() || !QFile::exists(path) || !row.epub()) {
+        debug("skipping " + contentId + ": not a sideloaded EPUB on the device");
         finishBook(contentId, true);
         return;
     }
@@ -466,10 +513,14 @@ void Controller::syncBook(const QString &contentId) {
                       .arg(remote.progress, percentText(remote.percentage), remote.device,
                            QDateTime::fromMSecsSinceEpoch(remote.timestamp * 1000).toString(Qt::ISODate)));
         bool applied = false, remoteNewer = false;
+        // A book that has only been opened here (cover, 0%) has not been read
+        // here: whatever another device stored wins, however old. Otherwise the
+        // later change wins.
+        const bool unread = !local.valid || local.percentage < 0.005;
         if (remoteOther && remote.progress != local.progress) {
-            remoteNewer = !local.valid ||
-                          (remote.timestamp > 0 ? remote.timestamp > local.changedAt
-                                                : remote.percentage > local.percentage + 0.0001);
+            remoteNewer = unread ? remote.percentage > local.percentage + 0.0001
+                                 : (remote.timestamp > 0 ? remote.timestamp > local.changedAt
+                                                         : remote.percentage > local.percentage + 0.0001);
             const bool forward = config_.pull == Config::PullNewer || remote.percentage > local.percentage + 0.0001;
             const bool alreadyApplied = book.value("applied").toString() == remote.progress &&
                                         qint64(book.value("applied_timestamp").toDouble()) == remote.timestamp;
