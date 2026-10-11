@@ -569,11 +569,12 @@ void Controller::syncBook(const QString &contentId) {
                       .arg(remote.progress, percentText(remote.percentage), remote.device,
                            QDateTime::fromMSecsSinceEpoch(remote.timestamp * 1000).toString(Qt::ISODate)));
         bool applied = false, remoteNewer = false;
+        const bool samePlace = local.valid && paragraphKey(remote.progress) == paragraphKey(local.progress);
         // A book that has only been opened here (cover, 0%) has not been read
         // here: whatever another device stored wins, however old. Otherwise the
         // later change wins.
         const bool unread = !local.valid || local.percentage < 0.005;
-        if (remoteOther && remote.progress != local.progress) {
+        if (remoteOther && !samePlace) {
             remoteNewer = unread ? remote.percentage > local.percentage + 0.0001
                                  : (remote.timestamp > 0 ? remote.timestamp > local.changedAt
                                                          : remote.percentage > local.percentage + 0.0001);
@@ -609,16 +610,16 @@ void Controller::syncBook(const QString &contentId) {
             finishBook(contentId, true);
             return;
         }
-        const bool samePushed = book.value("pushed").toString() == local.progress &&
-                                qAbs(book.value("pushed_percentage").toDouble() - local.percentage) < 0.0005;
-        const bool sameRemote = remote.found && remote.progress == local.progress;
-        // Kobalt reads an applied position back from Nickel's library as its
-        // own XPointer to the same span: that is not a new position to send.
-        const QString appliedLocation = book.value("applied_location").toString();
-        const bool sameApplied = !appliedLocation.isEmpty() && appliedLocation == nickeldb::snapshot(row).location &&
-                                 qAbs(book.value("pushed_percentage").toDouble() - local.percentage) < 0.02;
-        if (sameApplied)
-            debug(label(row) + ": at the position applied earlier; not sending it back");
+        // A reader that opens an applied position reads it back from Nickel's
+        // library as its own XPointer to the same paragraph. That is not a new
+        // position; sending it would make the other device move again.
+        const QString key = paragraphKey(local.progress);
+        const bool samePushed = paragraphKey(book.value("pushed").toString()) == key;
+        const bool sameRemote = remote.found && paragraphKey(remote.progress) == key;
+        const bool sameApplied = !book.value("applied").toString().isEmpty() &&
+                                 paragraphKey(book.value("applied").toString()) == key;
+        if ((samePushed || sameRemote || sameApplied) && local.progress != book.value("pushed").toString())
+            debug(label(row) + ": same paragraph as the last exchange; not sending it again");
         if (samePushed || sameRemote || sameApplied) {
             if (!samePushed) {
                 book["pushed"] = local.progress;

@@ -112,6 +112,12 @@ static void testTree(const QByteArray &xml) {
     CHECK_EQ(normalizeXPointer("/body/DocFragment[2].0"), "/body/DocFragment[2].0");
     CHECK_EQ(normalizeXPointer("/body[1]/DocFragment[2]"), "/body/DocFragment[2].0");
     CHECK_EQ(normalizeXPointer("/body/DocFragment[5]/body/div/p/text().3"), "/body/DocFragment[5]/body/div/p/text().3");
+    // the same paragraph seen from Kobalt (span), KOReader (text) and CrossPoint
+    CHECK_EQ(paragraphKey("/body/DocFragment[5]/body/div[1]/p[1]/span[2]/text().0"), "/body/DocFragment[5]/body/div[1]/p[1]");
+    CHECK_EQ(paragraphKey("/body[1]/DocFragment[5]/body[1]/div[1]/p[1]/text()[1].17"), "/body/DocFragment[5]/body/div[1]/p[1]");
+    CHECK_EQ(paragraphKey("/body/DocFragment[5]/body/div[1]/p[1].0"), "/body/DocFragment[5]/body/div[1]/p[1]");
+    CHECK_EQ(paragraphKey("/body/DocFragment[5].0"), "/body/DocFragment[5]");
+    CHECK(paragraphKey("/body/DocFragment[5]/body/div[1]/p[2]/text().0") != paragraphKey("/body/DocFragment[5]/body/div[1]/p[1]/text().0"));
     const QString emoji = QString::fromUtf8("a\xF0\x9F\x98\x80") + "b";  // a, U+1F600, b
     CHECK(codePoints(emoji, 4) == 3);
     CHECK(utf16Length(emoji, 2) == 3);

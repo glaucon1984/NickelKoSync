@@ -67,6 +67,11 @@ int docFragmentIndex(const QString &xpointer);
 // CREngine's newest DOM version writes explicit [1] indices that other readers
 // (CrossPoint) do not parse. Everything after the inner body is kept.
 QString normalizeXPointer(const QString &xpointer);
+// The paragraph an XPointer points into: the pointer without its character
+// offset, text-node step and kepub span steps. Two readers describing the
+// same place produce different strings (one lands on the span, the other on
+// the text inside it); they share this key.
+QString paragraphKey(const QString &xpointer);
 // Code point count of a UTF-16 prefix, and the reverse.
 int codePoints(const QString &text, int utf16Length);
 int utf16Length(const QString &text, int codePoints);

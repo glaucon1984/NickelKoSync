@@ -127,6 +127,21 @@ QString fragmentTail(const QString &xpointer, int *fragment) {
 
 }
 
+QString paragraphKey(const QString &xpointer) {
+    QString key = normalizeXPointer(xpointer);
+    const int dot = key.lastIndexOf('.');
+    if (dot > key.lastIndexOf('/'))
+        key.truncate(dot);
+    static const QRegularExpression trailing("(/text\\(\\)(?:\\[[0-9]+\\])?|/span(?:\\[[0-9]+\\])?)$");
+    for (;;) {
+        const QRegularExpressionMatch match = trailing.match(key);
+        if (!match.hasMatch())
+            break;
+        key.truncate(match.capturedStart(0));
+    }
+    return key;
+}
+
 int codePoints(const QString &text, int utf16Length) {
     int count = 0;
     for (int i = 0; i < utf16Length && i < text.size(); ++i) {

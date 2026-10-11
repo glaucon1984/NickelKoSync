@@ -1,6 +1,7 @@
 # NickelKoSync
 
-KOReader progress sync for Kobo's own software. A [NickelHook](https://github.com/pgaskin/NickelHook)
+KOReader progress sync for Kobo's own software, for books read in Nickel's reader and in
+[Kobalt](https://kobalt.nicoverbruggen.be). A [NickelHook](https://github.com/pgaskin/NickelHook)
 mod that keeps the reading position of your sideloaded books in step with
 [KOReader's sync server](https://github.com/koreader/koreader-sync-server) (the official
 `sync.koreader.rocks`, or self-hosted servers such as
@@ -17,7 +18,7 @@ Kobalt stores each book's position as a CREngine XPointer in its own saved state
 writes Nickel's library database like Nickel's reader does. The mod lives in the same
 process as both readers and works at that storage layer:
 
-- **Push.** When a book is closed, the mod reads the position (Kobalt's XPointer, or
+- **Push.** When a book is closed, or the device goes to sleep with it open, the mod reads the position (Kobalt's XPointer, or
   Nickel's chapter position translated into an XPointer through the chapter's XHTML)
   and sends it to the server with the percentage read. Offline, it asks Nickel to turn
   Wi-Fi on and sends as soon as the device is online.
@@ -48,9 +49,20 @@ Documents are matched the way KOReader does it: by a checksum of the file's cont
 | 4.x (Qt 5) | Built and used on 4.45 (Kobo Clara BW) |
 | 5.x / 6.x (Qt 6) | Not built yet |
 
+**Kobalt.** The mod is built for [Kobalt](https://kobalt.nicoverbruggen.be), Nico
+Verbruggen's CREngine-based reader for Kobo, and needs no change to it: it reads and
+writes the position files Kobalt keeps in `.adds/kobalt` and the library row Kobalt
+maintains. Positions read in Kobalt are exchanged as exact XPointers. While Kobalt has a
+book open, a newer position from another device reaches it through Nickel's library, which
+Kobalt re-reads about once a minute before offering to jump. Nothing here requires Kobalt;
+without it the mod syncs Nickel's reader only.
+
+**Other devices.** Tested against [crosspoint-sync](https://github.com/crosspoint-reader/crosspoint-sync)
+with CrossPoint on an Xteink; the protocol is KOReader's, so KOReader on any device and
+the official `sync.koreader.rocks` work the same way.
+
 Only sideloaded books (`file:///mnt/onboard/...`) are synced. Kobo store books and Kobo's
-own cloud sync are left alone. Nothing here requires Kobalt; without it the mod syncs
-Nickel's reader only.
+own cloud sync are left alone.
 
 ## Install
 
@@ -99,6 +111,17 @@ Everything lives in `.adds/kosync/`:
 - `log.txt` — the log (rotated at 256 KB to `log.txt.1`).
 - `sync-now` — create this empty file to trigger a sync.
 - `uninstall` — create this empty file and reboot to remove the mod.
+
+## What to expect while reading
+
+- A position from another device arrives while a book is open in **Kobalt**: Kobalt's own
+  "position changed elsewhere" prompt appears within about a minute, since Kobalt re-reads
+  Nickel's library on that interval. Closing and reopening the book is quicker.
+- The same while a book is open in **Nickel's reader**: a notification names the device and
+  its percentage; close and reopen the book to move there (Nickel's reader cannot be moved
+  from outside).
+- Positions are compared by paragraph. A reader that reopens an applied position reports it
+  as its own slightly different XPointer, which is not sent back as a new position.
 
 ## Troubleshooting
 
