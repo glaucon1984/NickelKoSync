@@ -45,10 +45,10 @@ QString dialogStyle() {
                "QLabel#choiceName { font-size: %1px; }"
                "QLabel#choiceCurrent { font-size: %4px; font-style: italic; color: #404040; }"
                "QLabel#choiceDescription { font-size: %4px; color: #404040; }")
-        .arg(scale(29))
-        .arg(scale(40))
-        .arg(scale(21))
-        .arg(scale(23));
+        .arg(scale(31))
+        .arg(scale(42))
+        .arg(scale(22))
+        .arg(scale(24));
 }
 
 QStringList list(const char *a, const char *b, const char *c = 0) {
@@ -145,7 +145,7 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     setWindowModality(Qt::ApplicationModal);
     setStyleSheet(dialogStyle());
     QFont base = font();
-    base.setPixelSize(scale(29));
+    base.setPixelSize(scale(31));
     setFont(base);
 
     QVBoxLayout *outer = new QVBoxLayout(this);

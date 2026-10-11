@@ -31,15 +31,17 @@ QString dialogStyle() {
     return QString("QDialog { background: white; }"
                    "QLabel { color: black; background: transparent; font-size: %2px; font-weight: bold; }"
                    "QLineEdit { color: black; background: white; border: 3px solid black; border-radius: 8px;"
-                   "  padding: 12px; font-size: %3px; }"
+                   "  padding: 12px; font-size: %3px; font-family: %4; }"
                    "QPushButton { color: black; background: white; border: 3px solid black; border-radius: 10px;"
-                   "  font-size: %1px; }"
+                   "  font-size: %1px; font-family: %4; }"
                    "QPushButton:pressed, QPushButton:checked { color: white; background: black; }"
                    "QPushButton#action { background: black; color: white; }"
                    "QPushButton#action:pressed { background: white; color: black; }")
-        .arg(scale(24))
-        .arg(scale(28))
-        .arg(scale(34));
+        .arg(scale(38))
+        .arg(scale(30))
+        .arg(scale(36))
+        // Kobo's UI sans faces first, then whatever sans the firmware offers.
+        .arg("\"Kobo Nickel\", \"Avenir Next\", \"Avenir\", \"Gill Sans\", \"Droid Sans\", \"Noto Sans\", sans-serif");
 }
 
 }
