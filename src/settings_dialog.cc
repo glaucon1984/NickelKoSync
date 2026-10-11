@@ -51,8 +51,8 @@ QStringList list(const char *a, const char *b, const char *c = 0) {
 SettingRow::SettingRow(const QString &label, QWidget *parent) : QWidget(parent) {
     setAttribute(Qt::WA_StyledBackground, true);
     QHBoxLayout *layout = new QHBoxLayout(this);
-    layout->setContentsMargins(scale(12), scale(18), scale(12), scale(18));
-    layout->setSpacing(scale(20));
+    layout->setContentsMargins(scale(10), scale(14), scale(10), scale(14));
+    layout->setSpacing(scale(16));
     label_ = new QLabel(label, this);
     label_->setWordWrap(true);
     value_ = new QLabel(this);
@@ -61,7 +61,7 @@ SettingRow::SettingRow(const QString &label, QWidget *parent) : QWidget(parent) 
     value_->setWordWrap(true);
     layout->addWidget(label_, 3);
     layout->addWidget(value_, 2);
-    setMinimumHeight(scale(84));
+    setMinimumHeight(scale(64));
 }
 
 void SettingRow::setValue(const QString &value) {
@@ -90,23 +90,23 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     setWindowModality(Qt::ApplicationModal);
     setStyleSheet(dialogStyle);
     QFont base = font();
-    base.setPixelSize(scale(27));
+    base.setPixelSize(scale(22));
     setFont(base);
 
     QVBoxLayout *outer = new QVBoxLayout(this);
-    outer->setContentsMargins(scale(36), scale(28), scale(36), scale(28));
-    outer->setSpacing(scale(10));
+    outer->setContentsMargins(scale(32), scale(24), scale(32), scale(24));
+    outer->setSpacing(scale(8));
 
     // Title bar: name on the left, close on the right.
     QHBoxLayout *bar = new QHBoxLayout;
     QLabel *title = new QLabel("KOSync", this);
     QFont titleFont = base;
-    titleFont.setPixelSize(scale(38));
+    titleFont.setPixelSize(scale(32));
     title->setFont(titleFont);
     bar->addWidget(title, 1);
-    QPushButton *close = new QPushButton(QString::fromUtf8("Close  \xE2\x9C\x95"), this);
+    QPushButton *close = new QPushButton("Close", this);
     close->setObjectName("plain");
-    close->setMinimumHeight(scale(70));
+    close->setMinimumHeight(scale(60));
     connect(close, &QPushButton::clicked, this, &QDialog::accept);
     bar->addWidget(close);
     outer->addLayout(bar);
@@ -115,14 +115,14 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     actions->setSpacing(scale(20));
     QPushButton *syncNow = new QPushButton("Sync now", this);
     syncNow->setObjectName("action");
-    syncNow->setMinimumHeight(scale(80));
+    syncNow->setMinimumHeight(scale(68));
     connect(syncNow, &QPushButton::clicked, this, [this] {
         if (onSync)
             onSync(false);
     });
     QPushButton *syncAll = new QPushButton("Check whole library", this);
     syncAll->setObjectName("action");
-    syncAll->setMinimumHeight(scale(80));
+    syncAll->setMinimumHeight(scale(68));
     connect(syncAll, &QPushButton::clicked, this, [this] {
         if (onSync)
             onSync(true);
@@ -135,7 +135,7 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     status_->setObjectName("status");
     status_->setWordWrap(true);
     QFont small = base;
-    small.setPixelSize(scale(22));
+    small.setPixelSize(scale(19));
     status_->setFont(small);
     outer->addWidget(status_);
 
@@ -150,13 +150,13 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     addAccount(rows, "password", "Password");
 
     rows->addWidget(section("SYNC"));
-    addOption(rows, "sync", "pull", "Positions from other devices", list("newer", "forward", "off"),
-              list("Newest wins", "Only when further ahead", "Never move"), int(config.pull));
-    addOption(rows, "sync", "push", "Send this device's progress", list("true", "false"), list("Yes", "No"),
+    addOption(rows, "sync", "pull", "Other devices' positions", list("newer", "forward", "off"),
+              list("Newest wins", "Forward only", "Ignore"), int(config.pull));
+    addOption(rows, "sync", "push", "Send my progress", list("true", "false"), list("Yes", "No"),
               config.push ? 0 : 1);
-    addOption(rows, "sync", "on_open", "Check when a book is opened or the device wakes", list("true", "false"),
+    addOption(rows, "sync", "on_open", "Check on open and wake", list("true", "false"),
               list("Yes", "No"), config.onOpen ? 0 : 1);
-    addOption(rows, "wifi", "mode", "Wi-Fi", list("connect", "keep"), list("Connect when needed", "Leave alone"),
+    addOption(rows, "wifi", "mode", "Wi-Fi", list("connect", "keep"), list("Connect if needed", "Leave alone"),
               config.connectWifi ? 0 : 1);
     addOption(rows, "sync", "document_id", "Match books by", list("binary", "filename"),
               list("File content", "File name"), int(config.documentId));
@@ -179,10 +179,10 @@ QWidget *SettingsDialog::section(const QString &title) {
     QLabel *label = new QLabel(title, this);
     label->setObjectName("section");
     QFont f = font();
-    f.setPixelSize(scale(20));
+    f.setPixelSize(scale(16));
     f.setBold(true);
     label->setFont(f);
-    label->setMinimumHeight(scale(44));
+    label->setMinimumHeight(scale(36));
     return label;
 }
 

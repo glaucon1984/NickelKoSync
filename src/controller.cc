@@ -490,6 +490,8 @@ void Controller::processQueue() {
 }
 
 void Controller::finishBook(const QString &contentId, bool success) {
+    if (manualSync_)
+        ++checkedSinceManual_;
     if (success) {
         queue_.removeAll(contentId);
         failures_.remove(contentId);
@@ -741,14 +743,24 @@ void Controller::showSettings() {
     };
     dialog->onSync = [this, dialog](bool wholeLibrary) {
         lastWifiRequest_ = 0;
+        manualSync_ = true;
+        checkedSinceManual_ = 0;
         if (wholeLibrary)
             enqueueAll("screen");
         else
             enqueueRecent("screen");
+        if (queue_.isEmpty()) {
+            manualSync_ = false;
+            lastEvent_ = "No books to check";
+            dialog->setStatus(statusText());
+            toast("KOSync", "No books to check");
+            return;
+        }
         if (!online())
             requestWifi();
         dialog->setStatus(statusText());
-        toast("KOSync", online() ? "Syncing\u2026" : "Connecting to Wi-Fi\u2026");
+        toast("KOSync", online() ? QString::fromUtf8("Checking %1 book(s)\u2026").arg(queue_.size())
+                                 : QString::fromUtf8("Connecting to Wi-Fi\u2026"));
     };
     dialog->setStatus(statusText());
     dialog_ = dialog;
@@ -772,11 +784,22 @@ void Controller::noteEvent(const QString &text) {
 }
 
 void Controller::flushEvents() {
-    if (events_.isEmpty())
+    const bool manual = manualSync_;
+    manualSync_ = false;
+    if (events_.isEmpty()) {
+        // Only a sync started from the screen reports that nothing changed.
+        if (manual) {
+            lastEvent_ = QString("Checked %1 book(s), nothing to sync").arg(checkedSinceManual_);
+            toast("KOSync", lastEvent_);
+        }
         return;
-    QStringList lines = events_.mid(0, maxToastLines);
-    if (events_.size() > maxToastLines)
-        lines.append(QString("and %1 more").arg(events_.size() - maxToastLines));
+    }
+    const int shown = manual ? maxToastLines - 1 : maxToastLines;
+    QStringList lines = events_.mid(0, shown);
+    if (events_.size() > shown)
+        lines.append(QString("and %1 more").arg(events_.size() - shown));
+    if (manual)
+        lines.prepend(QString("Checked %1 book(s)").arg(checkedSinceManual_));
     toast("KOSync", lines.join("\n"));
     events_.clear();
 }

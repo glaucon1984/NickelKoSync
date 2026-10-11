@@ -45,7 +45,7 @@ TextEntryDialog::TextEntryDialog(const QString &title, const QString &initial, b
     setWindowModality(Qt::ApplicationModal);
     setStyleSheet(dialogStyle);
     QFont base = font();
-    base.setPixelSize(scale(28));
+    base.setPixelSize(scale(24));
     setFont(base);
 
     QVBoxLayout *outer = new QVBoxLayout(this);
@@ -54,7 +54,7 @@ TextEntryDialog::TextEntryDialog(const QString &title, const QString &initial, b
 
     QLabel *heading = new QLabel(title, this);
     QFont titleFont = base;
-    titleFont.setPixelSize(scale(36));
+    titleFont.setPixelSize(scale(30));
     titleFont.setBold(true);
     heading->setFont(titleFont);
     outer->addWidget(heading);
@@ -107,7 +107,7 @@ TextEntryDialog::TextEntryDialog(const QString &title, const QString &initial, b
     space->setFocusPolicy(Qt::NoFocus);
     space->setProperty("text_value", QString(" "));
     connect(space, SIGNAL(clicked()), this, SLOT(key()));
-    QPushButton *back = new QPushButton(QString::fromUtf8("\xE2\x8C\xAB"), this);  // erase to the left
+    QPushButton *back = new QPushButton("Delete", this);
     back->setMinimumSize(scale(160), scale(90));
     back->setFocusPolicy(Qt::NoFocus);
     back->setAutoRepeat(true);
