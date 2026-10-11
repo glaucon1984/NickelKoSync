@@ -75,6 +75,7 @@ void Controller::start() {
         else
             onConfigDirectoryChanged();
     });
+    configModified_ = QFileInfo(configFile).lastModified();
     kobaltMarker_ = QFile::exists(kobaltMarkerFile);
     kobaltBook_ = kobaltMarker_ ? kobalt::activeBook() : QString();
     readingView_ = nickeldb::readingViewActive();
@@ -223,6 +224,19 @@ void Controller::onConfigDirectoryChanged() {
 }
 
 void Controller::tick() {
+    // A USB session unmounts the storage, which silently drops the folder
+    // watches. Re-add them and check the files they covered.
+    if (watcher_) {
+        const QStringList watched = watcher_->directories();
+        if (!watched.contains(configDir()) && QFileInfo(configDir()).isDir()) {
+            watcher_->addPath(configDir());
+            onConfigDirectoryChanged();
+        }
+        if (!watched.contains(kobalt::directory()) && kobalt::installed())
+            watcher_->addPath(kobalt::directory());
+    }
+    if (QFile::exists(syncNowFile) || QFileInfo(configFile).lastModified() != configModified_)
+        onConfigDirectoryChanged();
     const bool reading = nickeldb::readingViewActive();
     if (readingView_ && !reading) {
         const QList<BookRow> recent = nickeldb::recentBooks(1);
