@@ -179,25 +179,6 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     bar->addWidget(close);
     outer->addLayout(bar);
 
-    QHBoxLayout *actions = new QHBoxLayout;
-    actions->setSpacing(scale(20));
-    QPushButton *syncNow = new QPushButton("Sync now", this);
-    syncNow->setObjectName("action");
-    syncNow->setMinimumHeight(scale(64));
-    connect(syncNow, &QPushButton::clicked, this, [this] {
-        if (onSync)
-            onSync(false);
-    });
-    QPushButton *syncAll = new QPushButton("Check whole library", this);
-    syncAll->setObjectName("action");
-    syncAll->setMinimumHeight(scale(64));
-    connect(syncAll, &QPushButton::clicked, this, [this] {
-        if (onSync)
-            onSync(true);
-    });
-    actions->addWidget(syncNow);
-    actions->addWidget(syncAll);
-    outer->addLayout(actions);
 
     status_ = new QLabel(this);
     status_->setObjectName("status");
@@ -248,6 +229,27 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     addOption(rows, "options", "verbose", "Detailed log", list("true", "false"), list("On", "Off"), QStringList(),
               config.verbose ? 0 : 1);
     outer->addStretch(1);
+
+    // Sync buttons at the bottom, away from Close.
+    QHBoxLayout *actions = new QHBoxLayout;
+    actions->setSpacing(scale(20));
+    QPushButton *syncNow = new QPushButton("Sync now", this);
+    syncNow->setObjectName("action");
+    syncNow->setMinimumHeight(scale(64));
+    connect(syncNow, &QPushButton::clicked, this, [this] {
+        if (onSync)
+            onSync(false);
+    });
+    QPushButton *syncAll = new QPushButton("Check whole library", this);
+    syncAll->setObjectName("action");
+    syncAll->setMinimumHeight(scale(64));
+    connect(syncAll, &QPushButton::clicked, this, [this] {
+        if (onSync)
+            onSync(true);
+    });
+    actions->addWidget(syncNow);
+    actions->addWidget(syncAll);
+    outer->addLayout(actions);
 
     if (const QScreen *screen = QApplication::primaryScreen())
         setGeometry(screen->geometry());
