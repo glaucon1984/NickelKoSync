@@ -41,9 +41,10 @@ QString dialogStyle() {
                "QPushButton#action { background: black; color: white; }"
                "QPushButton#action:pressed { background: white; color: black; }"
                "QPushButton#plain { border: none; padding: 4px 12px; }"
-               "QPushButton#choice { border: none; border-bottom: 1px solid #a0a0a0; border-radius: 0;"
-               "  text-align: left; padding: 18px 20px; }"
-               "QPushButton#choice:pressed { background: black; color: white; }")
+               "kosync--ChoiceRow { border-bottom: 1px solid #a0a0a0; background: white; }"
+               "QLabel#choiceName { font-size: %1px; }"
+               "QLabel#choiceCurrent { font-size: %4px; font-style: italic; color: #404040; }"
+               "QLabel#choiceDescription { font-size: %4px; color: #404040; }")
         .arg(scale(27))
         .arg(scale(38))
         .arg(scale(20))
@@ -215,22 +216,36 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
 
     rows->addWidget(section("SYNC"));
     addOption(rows, "sync", "pull", "Other devices' positions", list("newer", "forward", "off"),
-              list("Newest wins", "Forward only", "Ignore"), int(config.pull));
-    addOption(rows, "sync", "push", "Send my progress", list("true", "false"), list("On", "Off"),
+              list("Newest wins", "Forward only", "Ignore"),
+              list("Move this Kobo to the position another device saved whenever that position is more "
+                   "recent, even if it is earlier in the book.",
+                   "Move only when the other device is further into the book.",
+                   "Never move this Kobo. Only send its own progress to the server."),
+              int(config.pull));
+    addOption(rows, "sync", "push", "Send my progress", list("true", "false"), list("On", "Off"), QStringList(),
               config.push ? 0 : 1);
-    addOption(rows, "sync", "on_open", "Check on open and wake", list("true", "false"),
-              list("On", "Off"), config.onOpen ? 0 : 1);
+    addOption(rows, "sync", "on_open", "Check on open and wake", list("true", "false"), list("On", "Off"),
+              QStringList(), config.onOpen ? 0 : 1);
     addOption(rows, "wifi", "mode", "Wi-Fi", list("connect", "keep"), list("Connect if needed", "Leave alone"),
+              list("Ask Nickel to turn Wi-Fi on when there is something to sync and the Kobo is offline. "
+                   "Nickel turns it off again by itself.",
+                   "Never touch Wi-Fi. Sync whenever it happens to be on, for example after tapping Sync on "
+                   "the home screen."),
               config.connectWifi ? 0 : 1);
     addOption(rows, "sync", "document_id", "Match books by", list("binary", "filename"),
-              list("File content", "File name"), int(config.documentId));
+              list("File content", "File name"),
+              list("Identify a book by a checksum of the file, as KOReader does by default. The same file "
+                   "must be on every device.",
+                   "Identify a book by its file name only, for when the files differ between devices but "
+                   "share a name."),
+              int(config.documentId));
 
     rows->addWidget(section("OPTIONS"));
-    addOption(rows, "options", "notify", "Notifications", list("true", "false"), list("On", "Off"),
+    addOption(rows, "options", "notify", "Notifications", list("true", "false"), list("On", "Off"), QStringList(),
               config.notify ? 0 : 1);
     addOption(rows, "options", "menu_log", "Log entry in the menu", list("true", "false"), list("On", "Off"),
-              config.menuLog ? 0 : 1);
-    addOption(rows, "options", "verbose", "Detailed log", list("true", "false"), list("On", "Off"),
+              QStringList(), config.menuLog ? 0 : 1);
+    addOption(rows, "options", "verbose", "Detailed log", list("true", "false"), list("On", "Off"), QStringList(),
               config.verbose ? 0 : 1);
     outer->addStretch(1);
 
@@ -247,12 +262,14 @@ QWidget *SettingsDialog::section(const QString &title) {
 }
 
 void SettingsDialog::addOption(QLayout *layout, const char *section, const char *key, const char *label,
-                               const QStringList &values, const QStringList &names, int index) {
+                               const QStringList &values, const QStringList &names, const QStringList &descriptions,
+                               int index) {
     Option option;
     option.section = section;
     option.key = key;
     option.values = values;
     option.names = names;
+    option.descriptions = descriptions;
     option.index = qBound(0, index, values.size() - 1);
     option.label = QString::fromUtf8(label);
     option.toggle = values.size() == 2 && values[0] == "true" && values[1] == "false";
@@ -305,7 +322,7 @@ void SettingsDialog::cycle() {
             onSet(option.section, option.key, option.values[option.index]);
         return;
     }
-    ChoiceDialog *chooser = new ChoiceDialog(option.label, option.names, option.index, this);
+    ChoiceDialog *chooser = new ChoiceDialog(option.label, option.names, option.descriptions, option.index, this);
     chooser->setAttribute(Qt::WA_DeleteOnClose);
     connect(chooser, &QDialog::accepted, this, [this, chooser, index] {
         Option &option = options_[index];
@@ -322,7 +339,45 @@ void SettingsDialog::cycle() {
 
 // ---------------------------------------------------------------------------
 
-ChoiceDialog::ChoiceDialog(const QString &title, const QStringList &names, int current, QWidget *parent)
+ChoiceRow::ChoiceRow(const QString &name, const QString &description, bool current, QWidget *parent)
+    : QWidget(parent) {
+    setAttribute(Qt::WA_StyledBackground, true);
+    QVBoxLayout *layout = new QVBoxLayout(this);
+    layout->setContentsMargins(scale(16), scale(16), scale(16), scale(16));
+    layout->setSpacing(scale(6));
+    QHBoxLayout *top = new QHBoxLayout;
+    QLabel *title = new QLabel(name, this);
+    title->setObjectName("choiceName");
+    top->addWidget(title, 1);
+    if (current) {
+        QLabel *mark = new QLabel("Current", this);
+        mark->setObjectName("choiceCurrent");
+        top->addWidget(mark);
+    }
+    layout->addLayout(top);
+    if (!description.isEmpty()) {
+        QLabel *text = new QLabel(description, this);
+        text->setObjectName("choiceDescription");
+        text->setWordWrap(true);
+        layout->addWidget(text);
+    }
+}
+
+void ChoiceRow::mousePressEvent(QMouseEvent *event) {
+    pressed_ = true;
+    event->accept();
+}
+
+void ChoiceRow::mouseReleaseEvent(QMouseEvent *event) {
+    const bool inside = pressed_ && rect().contains(event->pos());
+    pressed_ = false;
+    event->accept();
+    if (inside)
+        emit clicked();
+}
+
+ChoiceDialog::ChoiceDialog(const QString &title, const QStringList &names, const QStringList &descriptions,
+                           int current, QWidget *parent)
     : QDialog(parent) {
     setObjectName("kosyncChoice");
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
@@ -336,12 +391,10 @@ ChoiceDialog::ChoiceDialog(const QString &title, const QStringList &names, int c
     heading->setWordWrap(true);
     layout->addWidget(heading);
     for (int i = 0; i < names.size(); ++i) {
-        QPushButton *button = new QPushButton(names[i] + (i == current ? QString::fromUtf8("   (current)") : QString()), this);
-        button->setObjectName("choice");
-        button->setMinimumHeight(scale(76));
-        button->setProperty("choice", i);
-        connect(button, SIGNAL(clicked()), this, SLOT(pick()));
-        layout->addWidget(button);
+        ChoiceRow *row = new ChoiceRow(names[i], descriptions.value(i), i == current, this);
+        row->setProperty("choice", i);
+        connect(row, SIGNAL(clicked()), this, SLOT(pick()));
+        layout->addWidget(row);
     }
     layout->addSpacing(scale(12));
     QPushButton *cancel = new QPushButton("Cancel", this);
@@ -350,9 +403,10 @@ ChoiceDialog::ChoiceDialog(const QString &title, const QStringList &names, int c
     layout->addWidget(cancel);
     const QScreen *screen = QApplication::primaryScreen();
     const QRect area = screen ? screen->geometry() : QRect(0, 0, 1072, 1448);
-    const int width = area.width() * 4 / 5;
+    const int width = area.width() * 5 / 6;
+    setFixedWidth(width);
     adjustSize();
-    const int height = qMax(sizeHint().height(), scale(200));
+    const int height = qMin(qMax(sizeHint().height(), scale(200)), area.height() - scale(80));
     setGeometry(area.x() + (area.width() - width) / 2, area.y() + (area.height() - height) / 2, width, height);
     eink::markControls(this);
 }

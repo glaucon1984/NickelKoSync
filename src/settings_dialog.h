@@ -39,11 +39,29 @@ private:
     bool on_ = false;
 };
 
-// A pop-up list to pick one of a few values.
+// One choice in the pop-up: its name, what it does, and whether it is current.
+class ChoiceRow : public QWidget {
+    Q_OBJECT
+public:
+    ChoiceRow(const QString &name, const QString &description, bool current, QWidget *parent = 0);
+
+signals:
+    void clicked();
+
+protected:
+    void mousePressEvent(QMouseEvent *event);
+    void mouseReleaseEvent(QMouseEvent *event);
+
+private:
+    bool pressed_ = false;
+};
+
+// A pop-up list to pick one of a few values, each explained.
 class ChoiceDialog : public QDialog {
     Q_OBJECT
 public:
-    ChoiceDialog(const QString &title, const QStringList &names, int current, QWidget *parent = 0);
+    ChoiceDialog(const QString &title, const QStringList &names, const QStringList &descriptions, int current,
+                 QWidget *parent = 0);
     int chosen() const { return chosen_; }
 
 private slots:
@@ -99,14 +117,14 @@ private:
     struct Option {
         const char *section, *key;
         QString label;
-        QStringList values, names;
+        QStringList values, names, descriptions;
         SettingRow *row = 0;
         int index = 0;
         bool toggle = false;
     };
     QWidget *section(const QString &title);
     void addOption(QLayout *layout, const char *section, const char *key, const char *label, const QStringList &values,
-                   const QStringList &names, int index);
+                   const QStringList &names, const QStringList &descriptions, int index);
     void addAccount(QLayout *layout, const char *key, const char *label);
     QString accountText(const QString &key) const;
     void refreshAccount();
