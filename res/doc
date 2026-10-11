@@ -1,0 +1,47 @@
+NickelKoSync
+============
+
+Keeps your reading position in sync with KOReader's progress sync server, from
+inside Kobo's own software. Works with books read in Kobalt and in Nickel's
+reader, and talks to the same server and account as KOReader and CrossPoint.
+
+Set-up
+------
+1. Copy config.sample.ini to config.ini in this folder.
+2. Fill in url (leave the default for the official server), username and
+   password. These are the same as in KOReader > Progress sync.
+3. Keep document_id = binary if the same book files are on all your devices
+   (the usual case); use filename if only the names match.
+4. Eject the Kobo. The mod re-reads config.ini within seconds; nothing to
+   reboot. log.txt reports "signed in to ..." on the first sync.
+
+How it syncs
+------------
+- When you close a book (in Kobalt or in Nickel's reader) the mod pushes the
+  position to the server. If the device is offline it asks Nickel to connect to
+  Wi-Fi (see [wifi] in config.ini) and pushes as soon as it is online.
+- Whenever it is online it also checks the server for the recently read books.
+  A newer position from another device is applied so the book opens there next
+  time, in Kobalt and in Nickel's reader alike. If Kobalt has that very book
+  open, Kobalt itself offers to move there (its usual message for a position
+  changed elsewhere).
+- Tapping Sync on Nickel's home screen also triggers a check. With NickelMenu,
+  nickelmenu.sample adds a "KOSync now" entry.
+
+Files in this folder
+--------------------
+config.ini          your settings (config.sample.ini is the reference)
+state.json          the mod's memory: device id, what was pushed and applied
+log.txt             what happened, newest at the end (log.txt.1 is older)
+sync-now            create this empty file to trigger a sync
+uninstall           create this empty file and reboot to remove the mod
+
+Notes
+-----
+- Positions exchanged with KOReader and CrossPoint are exact to the paragraph
+  and character for books read in Kobalt. For Nickel's reader they are exact
+  to the kepub span (a sentence or so) for kepub files, and approximate for
+  plain EPUB files.
+- Only sideloaded books are synced (files on the Kobo's storage). Books from
+  the Kobo store are not.
+- Kobo's own cloud sync is not touched.

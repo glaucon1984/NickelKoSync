@@ -1,0 +1,10 @@
+# NickelMenu entries for NickelKoSync. Append to .adds/nm/config (or a new
+# file in that folder) if you use NickelMenu (https://pgaskin.net/NickelMenu/).
+
+# Turn Wi-Fi on and sync now: the mod notices the sync-now file and runs a
+# full check of the recently read books once the device is online.
+menu_item :main :KOSync now :nickel_wifi :autoconnect
+  chain_success :cmd_spawn :quiet :touch /mnt/onboard/.adds/kosync/sync-now
+
+# Show the last lines of the mod's log.
+menu_item :main :KOSync log :cmd_output :5000 :tail -n 12 /mnt/onboard/.adds/kosync/log.txt
