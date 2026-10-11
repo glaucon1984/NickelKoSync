@@ -44,10 +44,10 @@ QString dialogStyle() {
                "QPushButton#choice { border: none; border-bottom: 1px solid #a0a0a0; border-radius: 0;"
                "  text-align: left; padding: 18px 20px; }"
                "QPushButton#choice:pressed { background: black; color: white; }")
-        .arg(scale(19))
         .arg(scale(27))
-        .arg(scale(14))
-        .arg(scale(16));
+        .arg(scale(38))
+        .arg(scale(20))
+        .arg(scale(22));
 }
 
 QStringList list(const char *a, const char *b, const char *c = 0) {
@@ -110,7 +110,7 @@ SettingRow::SettingRow(const QString &label, bool toggle, QWidget *parent) : QWi
         switch_ = new ToggleSwitch(this);
         layout->addWidget(switch_, 0, Qt::AlignVCenter);
     }
-    setMinimumHeight(scale(72));
+    setMinimumHeight(scale(84));
 }
 
 void SettingRow::setValue(const QString &value) {
@@ -144,7 +144,7 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     setWindowModality(Qt::ApplicationModal);
     setStyleSheet(dialogStyle());
     QFont base = font();
-    base.setPixelSize(scale(19));
+    base.setPixelSize(scale(27));
     setFont(base);
 
     QVBoxLayout *outer = new QVBoxLayout(this);
