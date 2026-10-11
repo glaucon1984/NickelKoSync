@@ -15,6 +15,7 @@
 
 class QLabel;
 class QPushButton;
+class QShowEvent;
 
 namespace kosync {
 
@@ -31,9 +32,13 @@ public:
     void setStatus(const QString &text);
     void refresh(const Config &config);
 
+protected:
+    void showEvent(QShowEvent *event);
+
 private slots:
     void cycle();
     void editAccount();
+    void settle();
 
 private:
     struct Option {

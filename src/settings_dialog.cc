@@ -1,5 +1,6 @@
 #include "settings_dialog.h"
 
+#include "eink.h"
 #include "text_entry.h"
 
 #include <QApplication>
@@ -8,6 +9,8 @@
 #include <QPushButton>
 #include <QScreen>
 #include <QScrollArea>
+#include <QShowEvent>
+#include <QTimer>
 #include <QVBoxLayout>
 
 namespace kosync {
@@ -23,8 +26,8 @@ int scale(int px) {
 const char *const dialogStyle =
     "QDialog { background: white; }"
     "QLabel { color: black; background: transparent; }"
-    "QPushButton { color: black; background: white; border: 3px solid black; border-radius: 12px;"
-    "  padding: 18px 24px; text-align: left; }"
+    "QPushButton { color: black; background: white; border: 2px solid black; border-radius: 10px;"
+    "  padding: 10px 20px; text-align: left; }"
     "QPushButton:pressed { color: white; background: black; }"
     "QPushButton#action { background: black; color: white; text-align: center; }"
     "QPushButton#action:pressed { background: white; color: black; }"
@@ -46,16 +49,16 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     setWindowModality(Qt::ApplicationModal);
     setStyleSheet(dialogStyle);
     QFont base = font();
-    base.setPixelSize(scale(34));
+    base.setPixelSize(scale(26));
     setFont(base);
 
     QVBoxLayout *outer = new QVBoxLayout(this);
-    outer->setContentsMargins(scale(40), scale(40), scale(40), scale(40));
-    outer->setSpacing(scale(24));
+    outer->setContentsMargins(scale(36), scale(36), scale(36), scale(36));
+    outer->setSpacing(scale(16));
 
     QLabel *title = new QLabel("KOSync", this);
     QFont titleFont = base;
-    titleFont.setPixelSize(scale(52));
+    titleFont.setPixelSize(scale(40));
     titleFont.setBold(true);
     title->setFont(titleFont);
     outer->addWidget(title);
@@ -64,14 +67,14 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     actions->setSpacing(scale(24));
     QPushButton *syncNow = new QPushButton("Sync now", this);
     syncNow->setObjectName("action");
-    syncNow->setMinimumHeight(scale(110));
+    syncNow->setMinimumHeight(scale(90));
     connect(syncNow, &QPushButton::clicked, this, [this] {
         if (onSync)
             onSync(false);
     });
     QPushButton *syncAll = new QPushButton("Check whole library", this);
     syncAll->setObjectName("action");
-    syncAll->setMinimumHeight(scale(110));
+    syncAll->setMinimumHeight(scale(90));
     connect(syncAll, &QPushButton::clicked, this, [this] {
         if (onSync)
             onSync(true);
@@ -83,7 +86,7 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     status_ = new QLabel(this);
     status_->setWordWrap(true);
     QFont small = base;
-    small.setPixelSize(scale(28));
+    small.setPixelSize(scale(22));
     status_->setFont(small);
     outer->addWidget(status_);
 
@@ -93,7 +96,7 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     QWidget *inner = new QWidget(scroll);
     QVBoxLayout *rows = new QVBoxLayout(inner);
     rows->setContentsMargins(0, 0, 0, 0);
-    rows->setSpacing(scale(18));
+    rows->setSpacing(scale(12));
     scroll->setWidget(inner);
     outer->addWidget(scroll, 1);
 
@@ -123,12 +126,24 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
 
     QPushButton *close = new QPushButton("Close", this);
     close->setObjectName("action");
-    close->setMinimumHeight(scale(110));
+    close->setMinimumHeight(scale(90));
     connect(close, &QPushButton::clicked, this, &QDialog::accept);
     outer->addWidget(close);
 
     if (const QScreen *screen = QApplication::primaryScreen())
         setGeometry(screen->geometry());
+    eink::markControls(this);
+}
+
+void SettingsDialog::showEvent(QShowEvent *event) {
+    QDialog::showEvent(event);
+    // The first paint clears the panel; later paints update their own area.
+    eink::markFlash(this);
+    QTimer::singleShot(800, this, SLOT(settle()));
+}
+
+void SettingsDialog::settle() {
+    eink::markControl(this);
 }
 
 void SettingsDialog::addOption(const char *section, const char *key, const char *label, const QStringList &values,
@@ -141,7 +156,7 @@ void SettingsDialog::addOption(const char *section, const char *key, const char 
     option.names = names;
     option.index = qBound(0, index, values.size() - 1);
     option.button = new QPushButton(this);
-    option.button->setMinimumHeight(scale(120));
+    option.button->setMinimumHeight(scale(96));
     option.button->setProperty("option", options_.size());
     option.button->setText(text(option));
     connect(option.button, SIGNAL(clicked()), this, SLOT(cycle()));
@@ -150,7 +165,7 @@ void SettingsDialog::addOption(const char *section, const char *key, const char 
 
 void SettingsDialog::addAccountButton(const char *key, const char *label) {
     QPushButton *button = new QPushButton(this);
-    button->setMinimumHeight(scale(120));
+    button->setMinimumHeight(scale(96));
     button->setProperty("key", QString::fromUtf8(key));
     button->setProperty("label", QString::fromUtf8(label));
     button->setText(QString::fromUtf8(label) + "\n" + accountText(QString::fromUtf8(key)));

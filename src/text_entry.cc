@@ -1,5 +1,7 @@
 #include "text_entry.h"
 
+#include "eink.h"
+
 #include <QApplication>
 #include <QGridLayout>
 #include <QHBoxLayout>
@@ -7,6 +9,8 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QScreen>
+#include <QShowEvent>
+#include <QTimer>
 #include <QVBoxLayout>
 
 namespace kosync {
@@ -40,7 +44,7 @@ TextEntryDialog::TextEntryDialog(const QString &title, const QString &initial, b
     setWindowModality(Qt::ApplicationModal);
     setStyleSheet(dialogStyle);
     QFont base = font();
-    base.setPixelSize(scale(36));
+    base.setPixelSize(scale(28));
     setFont(base);
 
     QVBoxLayout *outer = new QVBoxLayout(this);
@@ -49,7 +53,7 @@ TextEntryDialog::TextEntryDialog(const QString &title, const QString &initial, b
 
     QLabel *heading = new QLabel(title, this);
     QFont titleFont = base;
-    titleFont.setPixelSize(scale(44));
+    titleFont.setPixelSize(scale(36));
     titleFont.setBold(true);
     heading->setFont(titleFont);
     outer->addWidget(heading);
@@ -57,14 +61,14 @@ TextEntryDialog::TextEntryDialog(const QString &title, const QString &initial, b
     QHBoxLayout *field = new QHBoxLayout;
     field->setSpacing(scale(16));
     edit_ = new QLineEdit(initial, this);
-    edit_->setMinimumHeight(scale(100));
+    edit_->setMinimumHeight(scale(84));
     edit_->setFont(base);
     if (password)
         edit_->setEchoMode(QLineEdit::Password);
     field->addWidget(edit_, 1);
     if (password) {
         echo_ = new QPushButton("Show", this);
-        echo_->setMinimumSize(scale(150), scale(100));
+        echo_->setMinimumSize(scale(140), scale(84));
         connect(echo_, SIGNAL(clicked()), this, SLOT(toggleEcho()));
         field->addWidget(echo_);
     }
@@ -76,7 +80,7 @@ TextEntryDialog::TextEntryDialog(const QString &title, const QString &initial, b
     for (int row = 0; row < rows; ++row) {
         for (int column = 0; column < columns; ++column) {
             QPushButton *button = new QPushButton(this);
-            button->setMinimumSize(scale(90), scale(100));
+            button->setMinimumSize(scale(84), scale(90));
             button->setFocusPolicy(Qt::NoFocus);
             connect(button, SIGNAL(clicked()), this, SLOT(key()));
             grid->addWidget(button, row, column);
@@ -89,21 +93,21 @@ TextEntryDialog::TextEntryDialog(const QString &title, const QString &initial, b
     controls->setSpacing(scale(12));
     shift_ = new QPushButton("Shift", this);
     shift_->setCheckable(true);
-    shift_->setMinimumSize(scale(170), scale(100));
+    shift_->setMinimumSize(scale(160), scale(90));
     shift_->setFocusPolicy(Qt::NoFocus);
     connect(shift_, SIGNAL(clicked()), this, SLOT(shift()));
     symbols_ = new QPushButton("#+=", this);
     symbols_->setCheckable(true);
-    symbols_->setMinimumSize(scale(170), scale(100));
+    symbols_->setMinimumSize(scale(160), scale(90));
     symbols_->setFocusPolicy(Qt::NoFocus);
     connect(symbols_, SIGNAL(clicked()), this, SLOT(symbols()));
     QPushButton *space = new QPushButton("Space", this);
-    space->setMinimumHeight(scale(100));
+    space->setMinimumHeight(scale(90));
     space->setFocusPolicy(Qt::NoFocus);
     space->setProperty("text_value", QString(" "));
     connect(space, SIGNAL(clicked()), this, SLOT(key()));
     QPushButton *back = new QPushButton(QString::fromUtf8("\xE2\x8C\xAB"), this);  // erase to the left
-    back->setMinimumSize(scale(170), scale(100));
+    back->setMinimumSize(scale(160), scale(90));
     back->setFocusPolicy(Qt::NoFocus);
     back->setAutoRepeat(true);
     connect(back, SIGNAL(clicked()), this, SLOT(backspace()));
@@ -116,12 +120,12 @@ TextEntryDialog::TextEntryDialog(const QString &title, const QString &initial, b
     QHBoxLayout *actions = new QHBoxLayout;
     actions->setSpacing(scale(24));
     QPushButton *cancel = new QPushButton("Cancel", this);
-    cancel->setMinimumHeight(scale(110));
+    cancel->setMinimumHeight(scale(90));
     cancel->setFocusPolicy(Qt::NoFocus);
     connect(cancel, SIGNAL(clicked()), this, SLOT(reject()));
     QPushButton *done = new QPushButton("Done", this);
     done->setObjectName("action");
-    done->setMinimumHeight(scale(110));
+    done->setMinimumHeight(scale(90));
     done->setFocusPolicy(Qt::NoFocus);
     connect(done, SIGNAL(clicked()), this, SLOT(accept()));
     actions->addWidget(cancel);
@@ -131,8 +135,19 @@ TextEntryDialog::TextEntryDialog(const QString &title, const QString &initial, b
     relabel();
     if (const QScreen *screen = QApplication::primaryScreen())
         setGeometry(screen->geometry());
+    eink::markControls(this);
     edit_->setFocus();
     edit_->end(false);
+}
+
+void TextEntryDialog::showEvent(QShowEvent *event) {
+    QDialog::showEvent(event);
+    eink::markFlash(this);
+    QTimer::singleShot(800, this, SLOT(settle()));
+}
+
+void TextEntryDialog::settle() {
+    eink::markControl(this);
 }
 
 QString TextEntryDialog::value() const {

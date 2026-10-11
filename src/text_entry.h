@@ -10,6 +10,7 @@
 
 class QLineEdit;
 class QPushButton;
+class QShowEvent;
 
 namespace kosync {
 
@@ -19,7 +20,11 @@ public:
     TextEntryDialog(const QString &title, const QString &initial, bool password, QWidget *parent = 0);
     QString value() const;
 
+protected:
+    void showEvent(QShowEvent *event);
+
 private slots:
+    void settle();
     void key();
     void shift();
     void symbols();
