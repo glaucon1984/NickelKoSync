@@ -40,6 +40,7 @@ const char *const dialogStyle =
 
 TextEntryDialog::TextEntryDialog(const QString &title, const QString &initial, bool password, QWidget *parent)
     : QDialog(parent) {
+    setObjectName("kosyncEntry");
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
     setWindowModality(Qt::ApplicationModal);
     setStyleSheet(dialogStyle);

@@ -3,7 +3,7 @@ include NickelHook/NickelHook.mk
 override LIBRARY  := src/libkosync.so
 override SOURCES  += src/main.cc src/controller.cc src/config.cc src/client.cc src/digest.cc \
                      src/epub.cc src/xpath.cc src/mapping.cc src/nickeldb.cc src/kobalt_state.cc src/nickel.cc src/log.cc \
-                     src/settings_dialog.cc src/text_entry.cc
+                     src/settings_dialog.cc src/text_entry.cc src/touch_input.cc
 override MOCS     += src/controller.h src/client.h src/settings_dialog.h src/text_entry.h
 override PKGCONF  += Qt5Widgets Qt5Network Qt5Sql zlib
 override CFLAGS   += -Wall -Wextra -Werror -fvisibility=hidden

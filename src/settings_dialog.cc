@@ -6,9 +6,9 @@
 #include <QApplication>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QMouseEvent>
 #include <QPushButton>
 #include <QScreen>
-#include <QScrollArea>
 #include <QShowEvent>
 #include <QTimer>
 #include <QVBoxLayout>
@@ -26,12 +26,15 @@ int scale(int px) {
 const char *const dialogStyle =
     "QDialog { background: white; }"
     "QLabel { color: black; background: transparent; }"
-    "QPushButton { color: black; background: white; border: 2px solid black; border-radius: 10px;"
-    "  padding: 10px 20px; text-align: left; }"
+    "QLabel#section { background: #d8d8d8; color: #202020; padding: 6px 10px; }"
+    "QLabel#value { color: #202020; font-style: italic; }"
+    "QLabel#status { color: #404040; }"
+    "kosync--SettingRow { border-bottom: 1px solid #909090; background: white; }"
+    "QPushButton { color: black; background: white; border: 2px solid black; border-radius: 8px; padding: 8px 16px; }"
     "QPushButton:pressed { color: white; background: black; }"
-    "QPushButton#action { background: black; color: white; text-align: center; }"
+    "QPushButton#action { background: black; color: white; }"
     "QPushButton#action:pressed { background: white; color: black; }"
-    "QScrollArea { border: none; background: white; }";
+    "QPushButton#plain { border: none; padding: 4px 12px; }";
 
 QStringList list(const char *a, const char *b, const char *c = 0) {
     QStringList values;
@@ -43,38 +46,83 @@ QStringList list(const char *a, const char *b, const char *c = 0) {
 
 }
 
+// ---------------------------------------------------------------------------
+
+SettingRow::SettingRow(const QString &label, QWidget *parent) : QWidget(parent) {
+    setAttribute(Qt::WA_StyledBackground, true);
+    QHBoxLayout *layout = new QHBoxLayout(this);
+    layout->setContentsMargins(scale(12), scale(18), scale(12), scale(18));
+    layout->setSpacing(scale(20));
+    label_ = new QLabel(label, this);
+    label_->setWordWrap(true);
+    value_ = new QLabel(this);
+    value_->setObjectName("value");
+    value_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    value_->setWordWrap(true);
+    layout->addWidget(label_, 3);
+    layout->addWidget(value_, 2);
+    setMinimumHeight(scale(84));
+}
+
+void SettingRow::setValue(const QString &value) {
+    value_->setText(value);
+}
+
+void SettingRow::mousePressEvent(QMouseEvent *event) {
+    pressed_ = true;
+    event->accept();
+}
+
+void SettingRow::mouseReleaseEvent(QMouseEvent *event) {
+    const bool inside = pressed_ && rect().contains(event->pos());
+    pressed_ = false;
+    event->accept();
+    if (inside)
+        emit clicked();
+}
+
+// ---------------------------------------------------------------------------
+
 SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     : QDialog(parent), url_(config.url), username_(config.username), hasPassword_(!config.userKey.isEmpty()) {
+    setObjectName("kosyncSettings");
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
     setWindowModality(Qt::ApplicationModal);
     setStyleSheet(dialogStyle);
     QFont base = font();
-    base.setPixelSize(scale(26));
+    base.setPixelSize(scale(27));
     setFont(base);
 
     QVBoxLayout *outer = new QVBoxLayout(this);
-    outer->setContentsMargins(scale(36), scale(36), scale(36), scale(36));
-    outer->setSpacing(scale(16));
+    outer->setContentsMargins(scale(36), scale(28), scale(36), scale(28));
+    outer->setSpacing(scale(10));
 
+    // Title bar: name on the left, close on the right.
+    QHBoxLayout *bar = new QHBoxLayout;
     QLabel *title = new QLabel("KOSync", this);
     QFont titleFont = base;
-    titleFont.setPixelSize(scale(40));
-    titleFont.setBold(true);
+    titleFont.setPixelSize(scale(38));
     title->setFont(titleFont);
-    outer->addWidget(title);
+    bar->addWidget(title, 1);
+    QPushButton *close = new QPushButton(QString::fromUtf8("Close  \xE2\x9C\x95"), this);
+    close->setObjectName("plain");
+    close->setMinimumHeight(scale(70));
+    connect(close, &QPushButton::clicked, this, &QDialog::accept);
+    bar->addWidget(close);
+    outer->addLayout(bar);
 
     QHBoxLayout *actions = new QHBoxLayout;
-    actions->setSpacing(scale(24));
+    actions->setSpacing(scale(20));
     QPushButton *syncNow = new QPushButton("Sync now", this);
     syncNow->setObjectName("action");
-    syncNow->setMinimumHeight(scale(90));
+    syncNow->setMinimumHeight(scale(80));
     connect(syncNow, &QPushButton::clicked, this, [this] {
         if (onSync)
             onSync(false);
     });
     QPushButton *syncAll = new QPushButton("Check whole library", this);
     syncAll->setObjectName("action");
-    syncAll->setMinimumHeight(scale(90));
+    syncAll->setMinimumHeight(scale(80));
     connect(syncAll, &QPushButton::clicked, this, [this] {
         if (onSync)
             onSync(true);
@@ -84,110 +132,120 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     outer->addLayout(actions);
 
     status_ = new QLabel(this);
+    status_->setObjectName("status");
     status_->setWordWrap(true);
     QFont small = base;
     small.setPixelSize(scale(22));
     status_->setFont(small);
     outer->addWidget(status_);
 
-    QScrollArea *scroll = new QScrollArea(this);
-    scroll->setWidgetResizable(true);
-    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    QWidget *inner = new QWidget(scroll);
-    QVBoxLayout *rows = new QVBoxLayout(inner);
+    QVBoxLayout *rows = new QVBoxLayout;
     rows->setContentsMargins(0, 0, 0, 0);
-    rows->setSpacing(scale(12));
-    scroll->setWidget(inner);
-    outer->addWidget(scroll, 1);
+    rows->setSpacing(0);
+    outer->addLayout(rows);
 
-    addAccountButton("url", "Server");
-    addAccountButton("username", "Username");
-    addAccountButton("password", "Password");
-    for (int i = 0; i < account_.size(); ++i)
-        rows->addWidget(account_[i]);
+    rows->addWidget(section("ACCOUNT"));
+    addAccount(rows, "url", "Server");
+    addAccount(rows, "username", "Username");
+    addAccount(rows, "password", "Password");
 
-    addOption("sync", "pull", "Positions from other devices", list("newer", "forward", "off"),
-              list("newest wins", "only when further ahead", "never move"), int(config.pull));
-    addOption("sync", "push", "Send this device's progress", list("true", "false"), list("yes", "no"),
+    rows->addWidget(section("SYNC"));
+    addOption(rows, "sync", "pull", "Positions from other devices", list("newer", "forward", "off"),
+              list("Newest wins", "Only when further ahead", "Never move"), int(config.pull));
+    addOption(rows, "sync", "push", "Send this device's progress", list("true", "false"), list("Yes", "No"),
               config.push ? 0 : 1);
-    addOption("sync", "on_open", "Check when a book is opened or the device wakes", list("true", "false"),
-              list("yes", "no"), config.onOpen ? 0 : 1);
-    addOption("wifi", "mode", "Wi-Fi", list("connect", "keep"), list("connect when needed", "leave alone"),
+    addOption(rows, "sync", "on_open", "Check when a book is opened or the device wakes", list("true", "false"),
+              list("Yes", "No"), config.onOpen ? 0 : 1);
+    addOption(rows, "wifi", "mode", "Wi-Fi", list("connect", "keep"), list("Connect when needed", "Leave alone"),
               config.connectWifi ? 0 : 1);
-    addOption("sync", "document_id", "Match books by", list("binary", "filename"), list("file content", "file name"),
-              int(config.documentId));
-    addOption("options", "notify", "Notifications", list("true", "false"), list("on", "off"), config.notify ? 0 : 1);
-    addOption("options", "menu_log", "Log entry in the menu", list("true", "false"), list("yes", "no"),
-              config.menuLog ? 0 : 1);
-    addOption("options", "verbose", "Detailed log", list("true", "false"), list("on", "off"), config.verbose ? 0 : 1);
-    for (int i = 0; i < options_.size(); ++i)
-        rows->addWidget(options_[i].button);
-    rows->addStretch(1);
+    addOption(rows, "sync", "document_id", "Match books by", list("binary", "filename"),
+              list("File content", "File name"), int(config.documentId));
 
-    QPushButton *close = new QPushButton("Close", this);
-    close->setObjectName("action");
-    close->setMinimumHeight(scale(90));
-    connect(close, &QPushButton::clicked, this, &QDialog::accept);
-    outer->addWidget(close);
+    rows->addWidget(section("OPTIONS"));
+    addOption(rows, "options", "notify", "Notifications", list("true", "false"), list("On", "Off"),
+              config.notify ? 0 : 1);
+    addOption(rows, "options", "menu_log", "Log entry in the menu", list("true", "false"), list("Yes", "No"),
+              config.menuLog ? 0 : 1);
+    addOption(rows, "options", "verbose", "Detailed log", list("true", "false"), list("On", "Off"),
+              config.verbose ? 0 : 1);
+    outer->addStretch(1);
 
     if (const QScreen *screen = QApplication::primaryScreen())
         setGeometry(screen->geometry());
     eink::markControls(this);
 }
 
-void SettingsDialog::showEvent(QShowEvent *event) {
-    QDialog::showEvent(event);
-    // The first paint clears the panel; later paints update their own area.
-    eink::markFlash(this);
-    QTimer::singleShot(800, this, SLOT(settle()));
+QWidget *SettingsDialog::section(const QString &title) {
+    QLabel *label = new QLabel(title, this);
+    label->setObjectName("section");
+    QFont f = font();
+    f.setPixelSize(scale(20));
+    f.setBold(true);
+    label->setFont(f);
+    label->setMinimumHeight(scale(44));
+    return label;
 }
 
-void SettingsDialog::settle() {
-    eink::markControl(this);
-}
-
-void SettingsDialog::addOption(const char *section, const char *key, const char *label, const QStringList &values,
-                               const QStringList &names, int index) {
+void SettingsDialog::addOption(QLayout *layout, const char *section, const char *key, const char *label,
+                               const QStringList &values, const QStringList &names, int index) {
     Option option;
     option.section = section;
     option.key = key;
-    option.label = label;
     option.values = values;
     option.names = names;
     option.index = qBound(0, index, values.size() - 1);
-    option.button = new QPushButton(this);
-    option.button->setMinimumHeight(scale(96));
-    option.button->setProperty("option", options_.size());
-    option.button->setText(text(option));
-    connect(option.button, SIGNAL(clicked()), this, SLOT(cycle()));
+    option.row = new SettingRow(QString::fromUtf8(label), this);
+    option.row->setProperty("option", options_.size());
+    option.row->setValue(names.value(option.index));
+    connect(option.row, SIGNAL(clicked()), this, SLOT(cycle()));
+    layout->addWidget(option.row);
     options_.append(option);
 }
 
-void SettingsDialog::addAccountButton(const char *key, const char *label) {
-    QPushButton *button = new QPushButton(this);
-    button->setMinimumHeight(scale(96));
-    button->setProperty("key", QString::fromUtf8(key));
-    button->setProperty("label", QString::fromUtf8(label));
-    button->setText(QString::fromUtf8(label) + "\n" + accountText(QString::fromUtf8(key)));
-    connect(button, SIGNAL(clicked()), this, SLOT(editAccount()));
-    account_.append(button);
+void SettingsDialog::addAccount(QLayout *layout, const char *key, const char *label) {
+    SettingRow *row = new SettingRow(QString::fromUtf8(label), this);
+    row->setProperty("key", QString::fromUtf8(key));
+    row->setProperty("label", QString::fromUtf8(label));
+    row->setValue(accountText(QString::fromUtf8(key)));
+    connect(row, SIGNAL(clicked()), this, SLOT(editAccount()));
+    layout->addWidget(row);
+    account_.append(row);
 }
 
 QString SettingsDialog::accountText(const QString &key) const {
     if (key == "url")
-        return url_.isEmpty() ? QString("not set") : url_;
+        return url_.isEmpty() ? QString("Not set") : url_;
     if (key == "username")
-        return username_.isEmpty() ? QString("not set") : username_;
+        return username_.isEmpty() ? QString("Not set") : username_;
     return hasPassword_ ? QString::fromUtf8("\xE2\x80\xA2\xE2\x80\xA2\xE2\x80\xA2\xE2\x80\xA2\xE2\x80\xA2\xE2\x80\xA2")
-                        : QString("not set");
+                        : QString("Not set");
+}
+
+void SettingsDialog::refreshAccount() {
+    for (int i = 0; i < account_.size(); ++i)
+        account_[i]->setValue(accountText(account_[i]->property("key").toString()));
+}
+
+void SettingsDialog::cycle() {
+    QObject *row = sender();
+    if (!row)
+        return;
+    const int index = row->property("option").toInt();
+    if (index < 0 || index >= options_.size())
+        return;
+    Option &option = options_[index];
+    option.index = (option.index + 1) % option.values.size();
+    option.row->setValue(option.names[option.index]);
+    if (onSet)
+        onSet(option.section, option.key, option.values[option.index]);
 }
 
 void SettingsDialog::editAccount() {
-    QObject *button = sender();
-    if (!button)
+    QObject *row = sender();
+    if (!row)
         return;
-    const QString key = button->property("key").toString();
-    const QString label = button->property("label").toString();
+    const QString key = row->property("key").toString();
+    const QString label = row->property("label").toString();
     const bool password = key == "password";
     const QString initial = key == "url" ? url_ : key == "username" ? username_ : QString();
     TextEntryDialog *entry = new TextEntryDialog(label, initial, password, this);
@@ -207,40 +265,16 @@ void SettingsDialog::editAccount() {
             username_ = value;
         else
             hasPassword_ = true;
-        for (int i = 0; i < account_.size(); ++i) {
-            const QString k = account_[i]->property("key").toString();
-            account_[i]->setText(account_[i]->property("label").toString() + "\n" + accountText(k));
-        }
+        refreshAccount();
     });
     entry->show();
-}
-
-QString SettingsDialog::text(const Option &option) {
-    return QString::fromUtf8(option.label) + "\n" + option.names.value(option.index);
-}
-
-void SettingsDialog::cycle() {
-    QObject *button = sender();
-    if (!button)
-        return;
-    const int index = button->property("option").toInt();
-    if (index < 0 || index >= options_.size())
-        return;
-    Option &option = options_[index];
-    option.index = (option.index + 1) % option.values.size();
-    option.button->setText(text(option));
-    if (onSet)
-        onSet(option.section, option.key, option.values[option.index]);
 }
 
 void SettingsDialog::refresh(const Config &config) {
     url_ = config.url;
     username_ = config.username;
     hasPassword_ = !config.userKey.isEmpty();
-    for (int i = 0; i < account_.size(); ++i) {
-        const QString k = account_[i]->property("key").toString();
-        account_[i]->setText(account_[i]->property("label").toString() + "\n" + accountText(k));
-    }
+    refreshAccount();
     for (int i = 0; i < options_.size(); ++i) {
         Option &option = options_[i];
         const QString key = QString::fromUtf8(option.key);
@@ -262,12 +296,23 @@ void SettingsDialog::refresh(const Config &config) {
         else if (key == "verbose")
             index = config.verbose ? 0 : 1;
         option.index = qBound(0, index, option.values.size() - 1);
-        option.button->setText(text(option));
+        option.row->setValue(option.names[option.index]);
     }
 }
 
 void SettingsDialog::setStatus(const QString &text) {
     status_->setText(text);
+}
+
+void SettingsDialog::showEvent(QShowEvent *event) {
+    QDialog::showEvent(event);
+    // The first paint clears the panel; later paints update their own area.
+    eink::markFlash(this);
+    QTimer::singleShot(800, this, SLOT(settle()));
+}
+
+void SettingsDialog::settle() {
+    eink::markControl(this);
 }
 
 }

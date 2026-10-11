@@ -8,6 +8,7 @@
 #include "nickel.h"
 #include "nickeldb.h"
 #include "settings_dialog.h"
+#include "touch_input.h"
 #include "xpath.h"
 
 #include <QDir>
@@ -85,6 +86,7 @@ void Controller::start() {
     readingView_ = nickeldb::readingViewActive();
     wasAsleep_ = !awake();
 
+    installTouchInput(this);
     tickTimer_ = new QTimer(this);
     connect(tickTimer_, &QTimer::timeout, this, &Controller::tick);
     tickTimer_->start(tickMs);
