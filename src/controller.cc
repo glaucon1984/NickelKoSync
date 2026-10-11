@@ -7,11 +7,13 @@
 #include "mapping.h"
 #include "nickel.h"
 #include "nickeldb.h"
+#include "settings_dialog.h"
 #include "xpath.h"
 
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QApplication>
 #include <QFileSystemWatcher>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -34,6 +36,8 @@ const int maxFailures = 5;
 const char *const stateFile = KS_CONFIG_DIR "/state.json";
 const char *const configFile = KS_CONFIG_DIR "/config.ini";
 const char *const syncNowFile = KS_CONFIG_DIR "/sync-now";
+const char *const settingsFile = KS_CONFIG_DIR "/settings";
+const int maxToastLines = 3;
 const char *const kobaltMarkerFile = "/mnt/onboard/.adds/kobalt/active-session.json";
 
 qint64 nowSeconds() {
@@ -79,6 +83,7 @@ void Controller::start() {
     kobaltMarker_ = QFile::exists(kobaltMarkerFile);
     kobaltBook_ = kobaltMarker_ ? kobalt::activeBook() : QString();
     readingView_ = nickeldb::readingViewActive();
+    wasAsleep_ = !awake();
 
     tickTimer_ = new QTimer(this);
     connect(tickTimer_, &QTimer::timeout, this, &Controller::tick);
@@ -123,6 +128,8 @@ void Controller::loadConfig() {
         return;
     }
     writeNickelMenu();
+    if (dialog_)
+        dialog_->refresh(config_);
     client_.configure(config_.url, config_.username, config_.userKey, config_.insecure, config_.caFile);
     log(QString("configured: server %1, user %2, document id by %3, pull %4, Wi-Fi %5")
             .arg(config_.url, config_.username, config_.documentId == Config::DocumentFilename ? "filename" : "content",
@@ -139,8 +146,7 @@ void Controller::writeNickelMenu() {
     QString content;
     if (config_.menu) {
         content += "# Written by NickelKoSync from config.ini ([options] menu, menu_log); edits are overwritten.\n";
-        content += "menu_item :main :KOSync now :nickel_wifi :autoconnect\n";
-        content += "  chain_success :cmd_spawn :quiet :touch " KS_CONFIG_DIR "/sync-now\n";
+        content += "menu_item :main :KOSync :cmd_spawn :quiet :touch " KS_CONFIG_DIR "/settings\n";
         if (config_.menuLog)
             content += "menu_item :main :KOSync log :cmd_output :5000 :tail -n 12 " KS_CONFIG_DIR "/log.txt\n";
     }
@@ -224,6 +230,7 @@ void Controller::onKobaltDirectoryChanged() {
     if (marker && !kobaltMarker_) {
         kobaltBook_ = kobalt::activeBook();
         debug("Kobalt opened " + kobaltBook_);
+        onBookOpened(kobaltBook_, "Kobalt");
     } else if (!marker && kobaltMarker_) {
         const QString book = kobaltBook_;
         kobaltBook_.clear();
@@ -271,7 +278,25 @@ void Controller::tick() {
     }
     if (QFile::exists(syncNowFile) || QFileInfo(configFile).lastModified() != configModified_)
         onConfigDirectoryChanged();
+    if (QFile::exists(settingsFile)) {
+        QFile::remove(settingsFile);
+        showSettings();
+    }
+    const bool asleep = !awake();
+    if (wasAsleep_ && !asleep) {
+        const QString book = openBook();
+        if (!book.isEmpty()) {
+            debug("woke up with " + book + " open");
+            onBookOpened(book, "wake");
+        }
+    }
+    wasAsleep_ = asleep;
     const bool reading = nickeldb::readingViewActive();
+    if (reading && !readingView_) {
+        const QList<BookRow> recent = nickeldb::recentBooks(1);
+        if (!recent.isEmpty())
+            onBookOpened(recent[0].contentId, "Nickel's reader");
+    }
     if (readingView_ && !reading) {
         const QList<BookRow> recent = nickeldb::recentBooks(1);
         if (!recent.isEmpty()) {
@@ -444,6 +469,7 @@ void Controller::networkTick() {
                 log("signed in to " + config_.url + " as " + config_.username);
             } else {
                 log("sign-in failed: " + reply.error);
+                toast("KOSync", "Sign-in failed: " + reply.error);
                 if (reply.unauthorized())
                     authFailed_ = true;
                 else
@@ -474,6 +500,10 @@ void Controller::finishBook(const QString &contentId, bool success) {
         retryAfter_ = nowSeconds() + retryDelaySeconds;
     }
     saveState();
+    if (queue_.isEmpty())
+        flushEvents();
+    if (dialog_)
+        dialog_->setStatus(statusText());
 }
 
 void Controller::syncBook(const QString &contentId) {
@@ -529,6 +559,7 @@ void Controller::syncBook(const QString &contentId) {
                 if (apply(row, remote, local, &error)) {
                     applied = true;
                     log(QString("%1: moved to %2 from %3").arg(label(row), percentText(remote.percentage), remote.device));
+                    noteEvent(QString("%1 \u2192 %2 (from %3)").arg(label(row), percentText(remote.percentage), remote.device));
                     book["applied"] = remote.progress;
                     book["applied_timestamp"] = double(remote.timestamp);
                     book["pushed"] = remote.progress;
@@ -583,6 +614,7 @@ void Controller::syncBook(const QString &contentId) {
                                        book["pushed_at"] = double(nowSeconds());
                                        setBookState(contentId, book);
                                        log(QString("%1: pushed %2 (%3)").arg(label(row), percentText(local.percentage), local.source));
+                                       noteEvent(QString("%1: sent %2").arg(label(row), percentText(local.percentage)));
                                        finishBook(contentId, true);
                                    } else {
                                        if (reply.unauthorized())
@@ -647,6 +679,104 @@ bool Controller::apply(const BookRow &row, const RemoteProgress &remote, const L
         return false;
     }
     return true;
+}
+
+// ---------------------------------------------------------------------------
+// the screen, notifications, open books
+
+QString Controller::openBook() const {
+    if (QFile::exists(kobaltMarkerFile)) {
+        const QString book = kobalt::activeBook();
+        if (!book.isEmpty())
+            return book;
+    }
+    if (nickeldb::readingViewActive()) {
+        const QList<BookRow> recent = nickeldb::recentBooks(1);
+        if (!recent.isEmpty())
+            return recent[0].contentId;
+    }
+    return QString();
+}
+
+void Controller::onBookOpened(const QString &contentId, const char *reader) {
+    if (!config_.onOpen || contentId.isEmpty() || !configOk_)
+        return;
+    // A newer position elsewhere reaches Nickel's library; Kobalt then offers
+    // it within a minute. Nickel's reader only benefits at its next opening.
+    enqueue(contentId, reader);
+    if (!online())
+        requestWifi();
+}
+
+QString Controller::statusText() const {
+    QString text;
+    if (!configOk_)
+        text = "Not configured: edit .adds/kosync/config.ini";
+    else
+        text = config_.username + " at " + config_.url;
+    text += "\n";
+    text += online() ? "Online. " : "Offline. ";
+    if (!queue_.isEmpty())
+        text += QString("%1 book(s) waiting. ").arg(queue_.size());
+    if (!lastEvent_.isEmpty())
+        text += "Last: " + lastEvent_;
+    return text;
+}
+
+void Controller::showSettings() {
+    if (dialog_) {
+        dialog_->raise();
+        return;
+    }
+    QWidget *parent = QApplication::activeWindow();
+    SettingsDialog *dialog = new SettingsDialog(config_, parent);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->onSet = [this](const char *section, const char *key, const QString &value) {
+        if (!setConfigValue(configFile, section, key, value))
+            log(QString("cannot write %1 to config.ini").arg(key));
+        else
+            debug(QString("config.ini: %1 = %2").arg(key, value));
+    };
+    dialog->onSync = [this, dialog](bool wholeLibrary) {
+        lastWifiRequest_ = 0;
+        if (wholeLibrary)
+            enqueueAll("screen");
+        else
+            enqueueRecent("screen");
+        if (!online())
+            requestWifi();
+        dialog->setStatus(statusText());
+        toast("KOSync", online() ? "Syncing\u2026" : "Connecting to Wi-Fi\u2026");
+    };
+    dialog->setStatus(statusText());
+    dialog_ = dialog;
+    dialog->show();
+}
+
+void Controller::toast(const QString &title, const QString &body) {
+    if (!config_.notify)
+        return;
+    const nickel::Api &api = nickel::api();
+    if (!api.toast || !api.mainWindowController)
+        return;
+    void *controller = api.mainWindowController();
+    if (controller)
+        api.toast(controller, title, body, 5000);
+}
+
+void Controller::noteEvent(const QString &text) {
+    events_.append(text);
+    lastEvent_ = text;
+}
+
+void Controller::flushEvents() {
+    if (events_.isEmpty())
+        return;
+    QStringList lines = events_.mid(0, maxToastLines);
+    if (events_.size() > maxToastLines)
+        lines.append(QString("and %1 more").arg(events_.size() - maxToastLines));
+    toast("KOSync", lines.join("\n"));
+    events_.clear();
 }
 
 // ---------------------------------------------------------------------------

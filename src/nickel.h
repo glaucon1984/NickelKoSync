@@ -34,6 +34,8 @@ struct Api {
     void *(*wirelessManager)() = symbol<decltype(wirelessManager)>("_ZN23WirelessWorkflowManager14sharedInstanceEv");
     void (*connectWirelessSilently)(void *) =
         symbol<decltype(connectWirelessSilently)>("_ZN23WirelessWorkflowManager23connectWirelessSilentlyEv");
+    void (*toast)(void *, const QString &, const QString &, int) =
+        symbol<decltype(toast)>("_ZN20MainWindowController5toastERK7QStringS2_i");
     QObject *(*syncManager)() = symbol<decltype(syncManager)>("_ZN13N3SyncManager14sharedInstanceEv");
     const void *(*powerManager)() = symbol<decltype(powerManager)>("_ZN22N3PowerWorkflowManager14sharedInstanceEv");
     bool (*sleeping)(const void *) = symbol<decltype(sleeping)>("_ZNK22N3PowerWorkflowManager8sleepingEv");

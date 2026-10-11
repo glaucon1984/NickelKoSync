@@ -14,6 +14,7 @@
 #include <QObject>
 #include <QSet>
 #include <QString>
+#include <QPointer>
 #include <QStringList>
 
 class QFileSystemWatcher;
@@ -22,6 +23,7 @@ class QTimer;
 namespace kosync {
 
 struct BookRow;
+class SettingsDialog;
 struct LocalPosition {
     bool valid = false;
     QString source;        // "kobalt" or "nickel"
@@ -67,6 +69,13 @@ private:
     void enqueueRecent(const char *reason);
     void enqueueAll(const char *reason);
     void writeNickelMenu();
+    void showSettings();
+    void toast(const QString &title, const QString &body);
+    void noteEvent(const QString &text);
+    void flushEvents();
+    void onBookOpened(const QString &contentId, const char *reader);
+    QString openBook() const;
+    QString statusText() const;
     void processQueue();
     void syncBook(const QString &contentId);
     void finishBook(const QString &contentId, bool success);
@@ -99,6 +108,10 @@ private:
     bool kobaltMarker_ = false;
     qint64 lastWifiRequest_ = 0, lastPeriodic_ = 0, lastQueueLog_ = 0, retryAfter_ = 0;
     QDateTime configModified_;
+    QStringList events_;
+    QString lastEvent_;
+    bool wasAsleep_ = false;
+    QPointer<SettingsDialog> dialog_;
 };
 
 }

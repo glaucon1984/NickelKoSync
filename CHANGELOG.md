@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- KOSync screen from the NickelMenu entry: sync buttons and on-device settings.
+- Nickel notification after a sync, summarised to three lines.
+- A book is checked when it is opened and when the device wakes with it open.
+- A book only opened here (0%) never overrides another device's position; explicit
+  syncs check the whole library; folder watches survive USB sessions.
+
 ## v0.1.0 — 2026-10-11
 
 First release.

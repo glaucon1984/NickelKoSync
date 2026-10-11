@@ -23,7 +23,7 @@ process as both readers and works at that storage layer:
   Wi-Fi on and sends as soon as the device is online.
 - **Pull.** Whenever the device is online it checks books against the server: the whole
   library at start, after Nickel's own Sync and on request, the recently read books every
-  15 minutes while online. A newer position from another device is written into Kobalt's
+  15 minutes while online, and a book when it is opened or the device wakes with it open. A newer position from another device is written into Kobalt's
   saved state and into Nickel's library, so the next opening starts there, also for books
   never opened on the Kobo. If Kobalt has that book open at the time, Kobalt itself offers
   to jump there, as it does for any position changed outside it.
@@ -62,9 +62,12 @@ Nickel's reader only.
 5. Check `.adds/kosync/log.txt` after the first sync: it should say
    `signed in to <server> as <user>`.
 
-With [NickelMenu](https://pgaskin.net/NickelMenu/) installed, the mod adds a *KOSync now*
-entry to the main menu by itself (turn it off with `menu = false`); `menu_log = true` adds a
-*KOSync log* entry that shows the last lines of the log.
+With [NickelMenu](https://pgaskin.net/NickelMenu/) installed, the mod adds a *KOSync* entry
+to the main menu by itself (turn it off with `menu = false`). It opens the KOSync screen:
+*Sync now*, *Check whole library*, and the settings as buttons that cycle through their
+values. `menu_log = true` adds a *KOSync log* entry that shows the last lines of the log.
+After each sync Nickel's notification bubble lists what moved or was sent, three lines at
+most ("and N more").
 
 ## Configuration
 
@@ -80,6 +83,9 @@ entry to the main menu by itself (turn it off with `menu = false`); `menu_log = 
 | `[sync] recent_books` | `3` | Books checked per sync |
 | `[sync] pull_interval_minutes` | `15` | Check interval while online |
 | `[wifi] mode` | `connect` | `connect` asks Nickel for Wi-Fi when needed; `keep` never does |
+| `[sync] on_open` | `true` | Check a book when opened, and on wake with it open |
+| `[options] notify` | `true` | Nickel notification after a sync |
+| `[options] menu`, `menu_log` | `true`, `false` | NickelMenu entries |
 | `[options] verbose` | `false` | Log every decision |
 
 ## Files

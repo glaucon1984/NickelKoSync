@@ -2,7 +2,10 @@
 
 #include <QCryptographicHash>
 #include <QFile>
+#include <QRegularExpression>
+#include <QSaveFile>
 #include <QSettings>
+#include <QStringList>
 
 namespace kosync {
 namespace {
@@ -54,6 +57,7 @@ bool readConfig(const QString &path, Config *config, QString *problem) {
     config->recentBooks = qBound(1, ini.value("recent_books", 3).toInt(), 20);
     config->pullIntervalMinutes = qBound(1, ini.value("pull_interval_minutes", 15).toInt(), 24 * 60);
     config->sendMetadata = ini.value("send_metadata", false).toBool();
+    config->onOpen = ini.value("on_open", true).toBool();
     ini.endGroup();
 
     ini.beginGroup("wifi");
@@ -63,6 +67,7 @@ bool readConfig(const QString &path, Config *config, QString *problem) {
 
     ini.beginGroup("options");
     config->verbose = ini.value("verbose", false).toBool();
+    config->notify = ini.value("notify", true).toBool();
     config->menu = ini.value("menu", true).toBool();
     config->menuLog = ini.value("menu_log", false).toBool();
     config->maxBooks = qBound(1, ini.value("max_books", 300).toInt(), 2000);
@@ -77,6 +82,61 @@ bool readConfig(const QString &path, Config *config, QString *problem) {
             problem->clear();
     }
     return true;
+}
+
+}
+
+namespace kosync {
+
+bool setConfigValue(const QString &path, const QString &section, const QString &key, const QString &value) {
+    QFile file(path);
+    QString content;
+    if (file.open(QIODevice::ReadOnly))
+        content = QString::fromUtf8(file.readAll());
+    file.close();
+    const QString newline = content.contains("\r\n") ? "\r\n" : "\n";
+    QStringList lines = content.split(QRegularExpression("\r?\n"));
+    if (!lines.isEmpty() && lines.last().isEmpty())
+        lines.removeLast();
+    const QRegularExpression header("^\\s*\\[([^\\]]+)\\]");
+    const QRegularExpression assignment("^\\s*" + QRegularExpression::escape(key) + "\\s*=");
+    int sectionStart = -1, sectionEnd = lines.size();
+    for (int i = 0; i < lines.size(); ++i) {
+        const QRegularExpressionMatch match = header.match(lines[i]);
+        if (!match.hasMatch())
+            continue;
+        if (sectionStart >= 0) {
+            sectionEnd = i;
+            break;
+        }
+        if (match.captured(1).trimmed().compare(section, Qt::CaseInsensitive) == 0)
+            sectionStart = i;
+    }
+    const QString line = key + " = " + value;
+    if (sectionStart < 0) {
+        if (!lines.isEmpty() && !lines.last().trimmed().isEmpty())
+            lines.append(QString());
+        lines.append('[' + section + ']');
+        lines.append(line);
+    } else {
+        int found = -1;
+        for (int i = sectionStart + 1; i < sectionEnd; ++i)
+            if (assignment.match(lines[i]).hasMatch()) {
+                found = i;
+                break;
+            }
+        if (found >= 0) {
+            lines[found] = line;
+        } else {
+            int insert = sectionEnd;
+            while (insert > sectionStart + 1 && lines[insert - 1].trimmed().isEmpty())
+                --insert;
+            lines.insert(insert, line);
+        }
+    }
+    QSaveFile output(path);
+    const QByteArray bytes = (lines.join(newline) + newline).toUtf8();
+    return output.open(QIODevice::WriteOnly) && output.write(bytes) == bytes.size() && output.commit();
 }
 
 }

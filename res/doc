@@ -27,9 +27,15 @@ How it syncs
   changed elsewhere).
 - A full check of the library (so a book begun on another device opens at
   the right place the first time here) runs at start, after Nickel's own Sync
-  and on request: the "KOSync now" NickelMenu entry, which the mod adds by
-  itself when NickelMenu is installed (menu / menu_log in config.ini), or an
-  empty file named sync-now in this folder.
+  and on request from the KOSync screen, or with an empty file named sync-now
+  in this folder.
+- Opening a book, or waking the device with a book open, checks that book.
+- With NickelMenu installed the mod adds a "KOSync" entry to the main menu
+  (menu = false removes it). It opens the KOSync screen: Sync now, Check whole
+  library, and the settings as buttons that cycle through their values. The
+  server address and account stay in config.ini.
+- After a sync, Nickel's notification bubble lists what moved or was sent
+  (notify = false turns it off).
 - A book that has only been opened here, at the cover, never overrides what
   another device stored for it.
 
@@ -39,6 +45,7 @@ config.ini          your settings (config.sample.ini is the reference)
 state.json          the mod's memory: device id, what was pushed and applied
 log.txt             what happened, newest at the end (log.txt.1 is older)
 sync-now            create this empty file to trigger a sync
+settings            create this empty file to open the KOSync screen
 uninstall           create this empty file and reboot to remove the mod
                     (also delete .adds/nm/kosync if NickelMenu is installed)
 
