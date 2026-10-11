@@ -39,6 +39,20 @@ private:
     bool on_ = false;
 };
 
+// A pop-up list to pick one of a few values.
+class ChoiceDialog : public QDialog {
+    Q_OBJECT
+public:
+    ChoiceDialog(const QString &title, const QStringList &names, int current, QWidget *parent = 0);
+    int chosen() const { return chosen_; }
+
+private slots:
+    void pick();
+
+private:
+    int chosen_ = -1;
+};
+
 // One tappable row: label left, value right, separator below.
 class SettingRow : public QWidget {
     Q_OBJECT
@@ -84,6 +98,7 @@ private slots:
 private:
     struct Option {
         const char *section, *key;
+        QString label;
         QStringList values, names;
         SettingRow *row = 0;
         int index = 0;

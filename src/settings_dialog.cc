@@ -25,19 +25,30 @@ int scale(int px) {
     return px * width / 1072;
 }
 
-const char *const dialogStyle =
-    "QDialog { background: white; }"
-    "QLabel { color: black; background: transparent; }"
-    "QLabel#section { background: #d8d8d8; color: #202020; padding: 6px 10px; }"
-    "QLabel#value { color: #202020; font-style: italic; }"
-    "QLabel#status { color: #404040; }"
-    "kosync--SettingRow { border-bottom: 1px solid #a0a0a0; background: white; }"
-    "kosync--ToggleSwitch { background: transparent; }"
-    "QPushButton { color: black; background: white; border: 2px solid black; border-radius: 8px; padding: 8px 16px; }"
-    "QPushButton:pressed { color: white; background: black; }"
-    "QPushButton#action { background: black; color: white; }"
-    "QPushButton#action:pressed { background: white; color: black; }"
-    "QPushButton#plain { border: none; padding: 4px 12px; }";
+QString dialogStyle() {
+    return QString(
+               "QDialog { background: white; }"
+               "QLabel { color: black; background: transparent; font-size: %1px; }"
+               "QLabel#title { font-size: %2px; }"
+               "QLabel#section { background: #d8d8d8; color: #202020; padding: 4px 10px; font-size: %3px; font-weight: bold; }"
+               "QLabel#value { color: #202020; font-style: italic; font-size: %1px; }"
+               "QLabel#status { color: #404040; font-size: %4px; }"
+               "kosync--SettingRow { border-bottom: 1px solid #a0a0a0; background: white; }"
+               "kosync--ToggleSwitch { background: transparent; }"
+               "QPushButton { color: black; background: white; border: 2px solid black; border-radius: 8px;"
+               "  padding: 8px 16px; font-size: %1px; }"
+               "QPushButton:pressed { color: white; background: black; }"
+               "QPushButton#action { background: black; color: white; }"
+               "QPushButton#action:pressed { background: white; color: black; }"
+               "QPushButton#plain { border: none; padding: 4px 12px; }"
+               "QPushButton#choice { border: none; border-bottom: 1px solid #a0a0a0; border-radius: 0;"
+               "  text-align: left; padding: 18px 20px; }"
+               "QPushButton#choice:pressed { background: black; color: white; }")
+        .arg(scale(19))
+        .arg(scale(27))
+        .arg(scale(14))
+        .arg(scale(16));
+}
 
 QStringList list(const char *a, const char *b, const char *c = 0) {
     QStringList values;
@@ -131,9 +142,9 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     setObjectName("kosyncSettings");
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
     setWindowModality(Qt::ApplicationModal);
-    setStyleSheet(dialogStyle);
+    setStyleSheet(dialogStyle());
     QFont base = font();
-    base.setPixelSize(scale(20));
+    base.setPixelSize(scale(19));
     setFont(base);
 
     QVBoxLayout *outer = new QVBoxLayout(this);
@@ -143,9 +154,7 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     // Title bar: name on the left, close on the right.
     QHBoxLayout *bar = new QHBoxLayout;
     QLabel *title = new QLabel("KOSync", this);
-    QFont titleFont = base;
-    titleFont.setPixelSize(scale(30));
-    title->setFont(titleFont);
+    title->setObjectName("title");
     bar->addWidget(title, 1);
     QPushButton *close = new QPushButton("Close", this);
     close->setObjectName("plain");
@@ -192,9 +201,6 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     status_ = new QLabel(this);
     status_->setObjectName("status");
     status_->setWordWrap(true);
-    QFont small = base;
-    small.setPixelSize(scale(17));
-    status_->setFont(small);
     outer->addWidget(status_);
 
     QVBoxLayout *rows = new QVBoxLayout;
@@ -236,10 +242,6 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
 QWidget *SettingsDialog::section(const QString &title) {
     QLabel *label = new QLabel(title, this);
     label->setObjectName("section");
-    QFont f = font();
-    f.setPixelSize(scale(15));
-    f.setBold(true);
-    label->setFont(f);
     label->setMinimumHeight(scale(34));
     return label;
 }
@@ -252,6 +254,7 @@ void SettingsDialog::addOption(QLayout *layout, const char *section, const char 
     option.values = values;
     option.names = names;
     option.index = qBound(0, index, values.size() - 1);
+    option.label = QString::fromUtf8(label);
     option.toggle = values.size() == 2 && values[0] == "true" && values[1] == "false";
     option.row = new SettingRow(QString::fromUtf8(label), option.toggle, this);
     option.row->setProperty("option", options_.size());
@@ -294,11 +297,72 @@ void SettingsDialog::cycle() {
     if (index < 0 || index >= options_.size())
         return;
     Option &option = options_[index];
-    option.index = (option.index + 1) % option.values.size();
-    option.row->setValue(option.names[option.index]);
-    option.row->setOn(option.index == 0);
-    if (onSet)
-        onSet(option.section, option.key, option.values[option.index]);
+    if (option.toggle) {
+        option.index = (option.index + 1) % option.values.size();
+        option.row->setValue(option.names[option.index]);
+        option.row->setOn(option.index == 0);
+        if (onSet)
+            onSet(option.section, option.key, option.values[option.index]);
+        return;
+    }
+    ChoiceDialog *chooser = new ChoiceDialog(option.label, option.names, option.index, this);
+    chooser->setAttribute(Qt::WA_DeleteOnClose);
+    connect(chooser, &QDialog::accepted, this, [this, chooser, index] {
+        Option &option = options_[index];
+        const int chosen = chooser->chosen();
+        if (chosen < 0 || chosen >= option.values.size() || chosen == option.index)
+            return;
+        option.index = chosen;
+        option.row->setValue(option.names[option.index]);
+        if (onSet)
+            onSet(option.section, option.key, option.values[option.index]);
+    });
+    chooser->show();
+}
+
+// ---------------------------------------------------------------------------
+
+ChoiceDialog::ChoiceDialog(const QString &title, const QStringList &names, int current, QWidget *parent)
+    : QDialog(parent) {
+    setObjectName("kosyncChoice");
+    setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
+    setWindowModality(Qt::ApplicationModal);
+    setStyleSheet(dialogStyle() + "QDialog { border: 3px solid black; }");
+    QVBoxLayout *layout = new QVBoxLayout(this);
+    layout->setContentsMargins(scale(24), scale(24), scale(24), scale(24));
+    layout->setSpacing(scale(8));
+    QLabel *heading = new QLabel(title, this);
+    heading->setObjectName("title");
+    heading->setWordWrap(true);
+    layout->addWidget(heading);
+    for (int i = 0; i < names.size(); ++i) {
+        QPushButton *button = new QPushButton(names[i] + (i == current ? QString::fromUtf8("   (current)") : QString()), this);
+        button->setObjectName("choice");
+        button->setMinimumHeight(scale(76));
+        button->setProperty("choice", i);
+        connect(button, SIGNAL(clicked()), this, SLOT(pick()));
+        layout->addWidget(button);
+    }
+    layout->addSpacing(scale(12));
+    QPushButton *cancel = new QPushButton("Cancel", this);
+    cancel->setMinimumHeight(scale(64));
+    connect(cancel, SIGNAL(clicked()), this, SLOT(reject()));
+    layout->addWidget(cancel);
+    const QScreen *screen = QApplication::primaryScreen();
+    const QRect area = screen ? screen->geometry() : QRect(0, 0, 1072, 1448);
+    const int width = area.width() * 4 / 5;
+    adjustSize();
+    const int height = qMax(sizeHint().height(), scale(200));
+    setGeometry(area.x() + (area.width() - width) / 2, area.y() + (area.height() - height) / 2, width, height);
+    eink::markControls(this);
+}
+
+void ChoiceDialog::pick() {
+    QObject *button = sender();
+    if (!button)
+        return;
+    chosen_ = button->property("choice").toInt();
+    accept();
 }
 
 void SettingsDialog::editAccount() {

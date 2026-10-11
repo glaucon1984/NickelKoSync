@@ -27,14 +27,20 @@ const int columns = 10, rows = 4;
 const char *const letterRows[rows] = {"1234567890", "qwertyuiop", "asdfghjkl'", "zxcvbnm,.-"};
 const char *const symbolRows[rows] = {"@.-_/:~#%&", "+=?!;\"()[]", "{}<>*$^\\|`", "1234567890"};
 
-const char *const dialogStyle =
-    "QDialog { background: white; }"
-    "QLabel { color: black; background: transparent; }"
-    "QLineEdit { color: black; background: white; border: 3px solid black; border-radius: 8px; padding: 12px; }"
-    "QPushButton { color: black; background: white; border: 3px solid black; border-radius: 10px; }"
-    "QPushButton:pressed, QPushButton:checked { color: white; background: black; }"
-    "QPushButton#action { background: black; color: white; }"
-    "QPushButton#action:pressed { background: white; color: black; }";
+QString dialogStyle() {
+    return QString("QDialog { background: white; }"
+                   "QLabel { color: black; background: transparent; font-size: %2px; font-weight: bold; }"
+                   "QLineEdit { color: black; background: white; border: 3px solid black; border-radius: 8px;"
+                   "  padding: 12px; font-size: %3px; }"
+                   "QPushButton { color: black; background: white; border: 3px solid black; border-radius: 10px;"
+                   "  font-size: %1px; }"
+                   "QPushButton:pressed, QPushButton:checked { color: white; background: black; }"
+                   "QPushButton#action { background: black; color: white; }"
+                   "QPushButton#action:pressed { background: white; color: black; }")
+        .arg(scale(24))
+        .arg(scale(28))
+        .arg(scale(34));
+}
 
 }
 
@@ -43,7 +49,7 @@ TextEntryDialog::TextEntryDialog(const QString &title, const QString &initial, b
     setObjectName("kosyncEntry");
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
     setWindowModality(Qt::ApplicationModal);
-    setStyleSheet(dialogStyle);
+    setStyleSheet(dialogStyle());
     QFont base = font();
     base.setPixelSize(scale(24));
     setFont(base);
@@ -53,19 +59,12 @@ TextEntryDialog::TextEntryDialog(const QString &title, const QString &initial, b
     outer->setSpacing(scale(20));
 
     QLabel *heading = new QLabel(title, this);
-    QFont titleFont = base;
-    titleFont.setPixelSize(scale(30));
-    titleFont.setBold(true);
-    heading->setFont(titleFont);
     outer->addWidget(heading);
 
     QHBoxLayout *field = new QHBoxLayout;
     field->setSpacing(scale(16));
     edit_ = new QLineEdit(initial, this);
     edit_->setMinimumHeight(scale(110));
-    QFont entryFont = base;
-    entryFont.setPixelSize(scale(34));
-    edit_->setFont(entryFont);
     if (password)
         edit_->setEchoMode(QLineEdit::Password);
     field->addWidget(edit_, 1);
