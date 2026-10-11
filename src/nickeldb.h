@@ -45,6 +45,8 @@ NativeSnapshot snapshot(const BookRow &row);
 // "OEBPS/ch1.xhtml#kobo.3.1" style location from ChapterIDBookmarked, with
 // the book prefix some firmware versions add removed (Kobalt's nickel4::chapter).
 QString chapterLocation(const QString &contentId, const QString &raw);
+// Percent-encoded form of a location, as Kobalt records it (nickel4::shared).
+QString sharedLocation(const QString &raw);
 // Splits "path#fragment".
 void splitLocation(const QString &location, QString *path, QString *fragment);
 

@@ -285,6 +285,17 @@ void Controller::tick() {
         showSettings();
     }
     const bool asleep = !awake();
+    if (!wasAsleep_ && asleep) {
+        // Kobalt saves its position as the device goes to sleep but writes
+        // Nickel's library only on close; send it now, while Wi-Fi may be up.
+        const QString book = openBook();
+        if (!book.isEmpty()) {
+            debug("going to sleep with " + book + " open");
+            noteChange(book);
+            enqueue(book, "sleep");
+            continueQueue();
+        }
+    }
     if (wasAsleep_ && !asleep) {
         const QString book = openBook();
         if (!book.isEmpty()) {
@@ -383,7 +394,10 @@ LocalPosition Controller::localPosition(const BookRow &row) const {
         position.source = "kobalt";
         position.progress = normalizeXPointer(state.position);
         position.percentage = row.percent / 100.0;
-        if (state.raw.value("native_writeback").toString() != "verified" || row.percent <= 0) {
+        // A checkpoint newer than Nickel's row (sleep, or a failed write-back)
+        // carries a position the row's percentage does not describe.
+        const bool newerThanRow = state.modifiedMs > rowMs + 2000;
+        if (newerThanRow || state.raw.value("native_writeback").toString() != "verified" || row.percent <= 0) {
             Epub epub;
             QString error;
             if (epub.open(path, &error))
@@ -574,13 +588,16 @@ void Controller::syncBook(const QString &contentId) {
                     noteEvent(QString("%1 \u2192 %2 (from %3)").arg(label(row), percentText(remote.percentage), remote.device));
                     book["applied"] = remote.progress;
                     book["applied_timestamp"] = double(remote.timestamp);
+                    book["applied_location"] = appliedLocation_;
                     book["pushed"] = remote.progress;
                     book["pushed_percentage"] = remote.percentage;
                     book["seen"] = currentSeen(nickeldb::row(contentId));
                     setBookState(contentId, book);
                 } else if (error == "deferred") {
-                    debug(label(row) + ": a reader is open, trying again later");
+                    debug(label(row) + ": Nickel's reader is open, trying again later");
                     deferred_.insert(contentId);
+                    toast("KOSync", QString("%1: %2 is at %3. Close and reopen the book to move there.")
+                                        .arg(label(row), remote.device, percentText(remote.percentage)));
                     finishBook(contentId, true);
                     return;
                 } else {
@@ -595,7 +612,14 @@ void Controller::syncBook(const QString &contentId) {
         const bool samePushed = book.value("pushed").toString() == local.progress &&
                                 qAbs(book.value("pushed_percentage").toDouble() - local.percentage) < 0.0005;
         const bool sameRemote = remote.found && remote.progress == local.progress;
-        if (samePushed || sameRemote) {
+        // Kobalt reads an applied position back from Nickel's library as its
+        // own XPointer to the same span: that is not a new position to send.
+        const QString appliedLocation = book.value("applied_location").toString();
+        const bool sameApplied = !appliedLocation.isEmpty() && appliedLocation == nickeldb::snapshot(row).location &&
+                                 qAbs(book.value("pushed_percentage").toDouble() - local.percentage) < 0.02;
+        if (sameApplied)
+            debug(label(row) + ": at the position applied earlier; not sending it back");
+        if (samePushed || sameRemote || sameApplied) {
             if (!samePushed) {
                 book["pushed"] = local.progress;
                 book["pushed_percentage"] = local.percentage;
@@ -657,6 +681,7 @@ bool Controller::apply(const BookRow &row, const RemoteProgress &remote, const L
     const bool finished = remote.percentage >= 0.999;
     bool stored = false;
     QString nickelError;
+    appliedLocation_ = nickeldb::sharedLocation(location);
     if (nickeldb::writePosition(row.contentId, location, remote.percentage * 100.0, finished, &nickelError)) {
         stored = true;
         debug("stored " + location + " in Nickel's library");

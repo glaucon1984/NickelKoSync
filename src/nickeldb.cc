@@ -31,13 +31,6 @@ QString localBookPath(const QString &book) {
     return book.startsWith("file:///") ? book.mid(7) : QString();
 }
 
-// Kobalt's nickel4::shared(): percent-encoded path and fragment.
-QString sharedLocation(const QString &raw) {
-    const int hash = raw.indexOf('#');
-    const QString path = QString::fromLatin1(QUrl::toPercentEncoding(raw.left(hash < 0 ? raw.size() : hash), "/"));
-    return hash < 0 ? path : path + '#' + QString::fromLatin1(QUrl::toPercentEncoding(raw.mid(hash + 1)));
-}
-
 BookRow rowFromQuery(QSqlQuery &query) {
     BookRow row;
     row.contentId = query.value(0).toString();
@@ -79,6 +72,13 @@ struct VolumeGuard {
     }
 };
 
+}
+
+// Kobalt's nickel4::shared(): percent-encoded path and fragment.
+QString sharedLocation(const QString &raw) {
+    const int hash = raw.indexOf('#');
+    const QString path = QString::fromLatin1(QUrl::toPercentEncoding(raw.left(hash < 0 ? raw.size() : hash), "/"));
+    return hash < 0 ? path : path + '#' + QString::fromLatin1(QUrl::toPercentEncoding(raw.mid(hash + 1)));
 }
 
 QString databasePath() {
