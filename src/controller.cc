@@ -588,7 +588,7 @@ void Controller::syncBook(const QString &contentId) {
                 if (apply(row, remote, local, &error)) {
                     applied = true;
                     log(QString("%1: moved to %2 from %3").arg(label(row), percentText(remote.percentage), remote.device));
-                    noteEvent(QString("%1 \u2192 %2 (from %3)").arg(label(row), percentText(remote.percentage), remote.device));
+                    noteEvent(QString("%1 \u2192 %2 (from %3)").arg(label(row), percentText(remote.percentage), remote.device), true);
                     book["applied"] = remote.progress;
                     book["applied_timestamp"] = double(remote.timestamp);
                     book["applied_location"] = appliedLocation_;
@@ -810,14 +810,25 @@ void Controller::toast(const QString &title, const QString &body) {
     Notice::show(title, body, 7000);
 }
 
-void Controller::noteEvent(const QString &text) {
+void Controller::noteEvent(const QString &text, bool important) {
     events_.append(text);
     lastEvent_ = text;
+    if (important)
+        importantEvents_ = true;
 }
 
 void Controller::flushEvents() {
     const bool manual = manualSync_;
     manualSync_ = false;
+    // While a book is open, a background run that only sent positions stays
+    // quiet; a position moved by another device, or a sync from the screen,
+    // is still shown.
+    const bool important = importantEvents_;
+    importantEvents_ = false;
+    if (!manual && !important && !openBook().isEmpty()) {
+        events_.clear();
+        return;
+    }
     if (events_.isEmpty()) {
         // Only a sync started from the screen reports that nothing changed.
         if (manual) {
