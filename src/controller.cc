@@ -294,11 +294,13 @@ void Controller::tick() {
             debug("going to sleep with " + book + " open");
             noteChange(book);
             enqueue(book, "sleep");
-            continueQueue();
+            if (online())
+                continueQueue();
+            else
+                requestWifi(true);  // best effort: Nickel may or may not connect before it suspends
         }
     }
     if (wasAsleep_ && !asleep) {
-        holdUntil_ = 0;
         const QString book = openBook();
         if (!book.isEmpty()) {
             debug("woke up with " + book + " open");
@@ -845,64 +847,6 @@ void Controller::flushEvents() {
         lines.prepend(QString("Checked %1 book(s)").arg(checkedSinceManual_));
     toast("KOSync", lines.join("\n"));
     events_.clear();
-}
-
-// ---------------------------------------------------------------------------
-// holding sleep for a push
-
-bool Controller::needsPush(const QString &contentId) {
-    const BookRow row = nickeldb::row(contentId);
-    if (!row.valid || !row.epub())
-        return false;
-    const LocalPosition local = localPosition(row);
-    if (!local.valid || local.progress.isEmpty())
-        return false;
-    const QJsonObject book = bookState(contentId);
-    const QString key = paragraphKey(local.progress);
-    return key != paragraphKey(book.value("pushed").toString()) && key != paragraphKey(book.value("applied").toString());
-}
-
-bool Controller::holdSleep() {
-    const qint64 now = QDateTime::currentMSecsSinceEpoch();
-    if (holdUntil_ == 0) {
-        holdUntil_ = -1;
-        if (!configOk_ || !config_.push || config_.holdSleepSeconds <= 0 || authFailed_)
-            return false;
-        QString book = openBook();
-        if (book.isEmpty() && readingView_) {
-            // Nickel's sleep view has already replaced its reader; the book it
-            // showed at the last tick is the most recently read one.
-            const QList<BookRow> recent = nickeldb::recentBooks(1);
-            if (!recent.isEmpty())
-                book = recent[0].contentId;
-        }
-        if (book.isEmpty() || !needsPush(book))
-            return false;
-        heldBook_ = book;
-        holdUntil_ = now + qint64(config_.holdSleepSeconds) * 1000;
-        log(QString("holding sleep up to %1 s to send %2 (%3)")
-                .arg(config_.holdSleepSeconds)
-                .arg(book)
-                .arg(online() ? "online" : "offline, asking for Wi-Fi"));
-        noteChange(book);
-        enqueue(book, "sleep");
-        if (!online())
-            requestWifi(true);
-        else
-            continueQueue();
-        return true;
-    }
-    if (holdUntil_ < 0)
-        return false;
-    const bool sent = !queue_.contains(heldBook_) && !inFlight_;
-    if (sent || now >= holdUntil_) {
-        log(sent ? "sleep hold released: position sent" : "sleep hold released: time is up, the position stays queued");
-        holdUntil_ = -1;
-        return false;
-    }
-    if (online())
-        continueQueue();
-    return true;
 }
 
 // ---------------------------------------------------------------------------

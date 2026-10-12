@@ -58,7 +58,6 @@ bool readConfig(const QString &path, Config *config, QString *problem) {
     config->pullIntervalMinutes = qBound(1, ini.value("pull_interval_minutes", 15).toInt(), 24 * 60);
     config->sendMetadata = ini.value("send_metadata", false).toBool();
     config->onOpen = ini.value("on_open", true).toBool();
-    config->holdSleepSeconds = qBound(0, ini.value("hold_sleep_seconds", 20).toInt(), 120);
     ini.endGroup();
 
     ini.beginGroup("wifi");

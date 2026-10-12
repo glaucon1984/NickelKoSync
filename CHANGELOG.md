@@ -4,9 +4,10 @@
 
 - Notifications are the mod's own notice box: tap to dismiss, or it disappears after a
   few seconds.
-- At sleep, an unsent position of the open book holds the device awake for up to
-  `hold_sleep_seconds` (default 20) and turns Wi-Fi on if needed, so the push goes out
-  before the device suspends.
+- At sleep, an unsent position of the open book is queued and Wi-Fi is requested; it goes
+  out if the connection is still up, otherwise at the next one. (A build between v0.1.1 and
+  this one hooked the power manager to hold the sleep; that cut out Kobalt's hook on the
+  same function and was withdrawn.)
 
 ## v0.1.1 — 2026-10-11
 
