@@ -857,7 +857,14 @@ bool Controller::holdSleep() {
         holdUntil_ = -1;
         if (!configOk_ || !config_.push || config_.holdSleepSeconds <= 0 || authFailed_)
             return false;
-        const QString book = openBook();
+        QString book = openBook();
+        if (book.isEmpty() && readingView_) {
+            // Nickel's sleep view has already replaced its reader; the book it
+            // showed at the last tick is the most recently read one.
+            const QList<BookRow> recent = nickeldb::recentBooks(1);
+            if (!recent.isEmpty())
+                book = recent[0].contentId;
+        }
         if (book.isEmpty() || !needsPush(book))
             return false;
         heldBook_ = book;
