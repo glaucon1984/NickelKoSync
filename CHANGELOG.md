@@ -4,6 +4,9 @@
 
 - Notifications are the mod's own notice box: tap to dismiss, or it disappears after a
   few seconds.
+- At sleep, an unsent position of the open book holds the device awake for up to
+  `hold_sleep_seconds` (default 20) and turns Wi-Fi on if needed, so the push goes out
+  before the device suspends.
 
 ## v0.1.1 — 2026-10-11
 

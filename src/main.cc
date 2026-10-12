@@ -16,6 +16,7 @@ namespace {
 
 kosync::Controller *controller = 0;
 const int startDelayMs = 20000;  // let Nickel finish its own start-up first
+bool (*nativeCanSuspend)(void *) = 0;
 
 void scheduleStart() {
     // QTimer::singleShot must be called on a thread with an event loop; the
@@ -64,6 +65,19 @@ int init() {
     return 0;
 }
 
+}
+
+// Nickel asks before suspending; while a position of the open book is being
+// sent the answer is no, for a few seconds at most (see Controller::holdSleep).
+extern "C" __attribute__((visibility("default"))) bool kosync_can_suspend(void *manager) {
+    const bool native = nativeCanSuspend ? nativeCanSuspend(manager) : true;
+    if (!native)
+        return false;
+    return !(controller && controller->holdSleep());
+}
+
+namespace {
+
 // GCC 4.9 accepts designated initializers in C++ only when every field is
 // listed in order, so these tables are positional: see NickelHook.h.
 struct nh_info info = {
@@ -74,7 +88,10 @@ struct nh_info info = {
     5,                                                               // failsafe_delay
 };
 
+// sym, sym_new, lib, out, desc, optional
 struct nh_hook hooks[] = {
+    {"_ZN12PowerManager10canSuspendEv", "kosync_can_suspend", "libnickel.so.1.0.0", nh_symoutptr(nativeCanSuspend),
+     "Keep the device awake briefly while an open book's position is sent", true},
     {0},
 };
 

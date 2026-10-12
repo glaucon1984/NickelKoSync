@@ -29,6 +29,7 @@ struct Config {
     int pullIntervalMinutes = 15;
     bool sendMetadata = false;
     bool onOpen = true;    // check a book when it is opened / the device wakes with it open
+    int holdSleepSeconds = 20;  // keep the device awake this long to send an open book's position; 0 = off
 
     // [wifi]
     bool connectWifi = true;

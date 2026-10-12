@@ -43,6 +43,10 @@ public slots:
     void start();
     void startLater();
 
+public:
+    // Called by the PowerManager::canSuspend hook. True keeps the device awake.
+    bool holdSleep();
+
 private slots:
     void onKobaltDirectoryChanged();
     void onConfigDirectoryChanged();
@@ -87,7 +91,8 @@ private:
     // device state
     bool online() const;
     bool awake() const;
-    void requestWifi();
+    void requestWifi(bool force = false);
+    bool needsPush(const QString &contentId);
 
     Config config_;
     bool configOk_ = false;
@@ -112,6 +117,8 @@ private:
     QStringList events_;
     QString lastEvent_;
     QString appliedLocation_;   // Nickel location written by the last apply()
+    qint64 holdUntil_ = 0;      // ms; 0 = not decided for this sleep, -1 = no hold
+    QString heldBook_;
     bool manualSync_ = false;   // started from the screen: always report the outcome
     int checkedSinceManual_ = 0;
     bool wasAsleep_ = false;

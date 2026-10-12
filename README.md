@@ -18,7 +18,8 @@ Kobalt stores each book's position as a CREngine XPointer in its own saved state
 writes Nickel's library database like Nickel's reader does. The mod lives in the same
 process as both readers and works at that storage layer:
 
-- **Push.** When a book is closed, or the device goes to sleep with it open, the mod reads the position (Kobalt's XPointer, or
+- **Push.** When a book is closed, or the device goes to sleep with it open (holding the sleep
+  for up to 20 seconds and turning Wi-Fi on if it is off), the mod reads the position (Kobalt's XPointer, or
   Nickel's chapter position translated into an XPointer through the chapter's XHTML)
   and sends it to the server with the percentage read. Offline, it asks Nickel to turn
   Wi-Fi on and sends as soon as the device is online.
@@ -98,6 +99,7 @@ lines at most ("and N more"); tap it to dismiss it, or it goes away by itself.
 | `[sync] pull_interval_minutes` | `15` | Check interval while online |
 | `[wifi] mode` | `connect` | `connect` asks Nickel for Wi-Fi when needed; `keep` never does |
 | `[sync] on_open` | `true` | Check a book when opened, and on wake with it open |
+| `[sync] hold_sleep_seconds` | `20` | Keep the device awake this long at sleep to send an unsent position; `0` off |
 | `[options] notify` | `true` | Nickel notification after a sync |
 | `[options] menu`, `menu_log` | `true`, `false` | NickelMenu entries |
 | `[options] verbose` | `false` | Log every decision |
