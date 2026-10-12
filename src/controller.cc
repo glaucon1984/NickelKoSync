@@ -105,7 +105,7 @@ void Controller::start() {
     // Books read while the mod was not running (first start, or a book open at
     // power-off) have changed without a close event.
     foreach (const BookRow &row, nickeldb::recentBooks(config_.recentBooks)) {
-        if (currentSeen(row) != bookState(row.contentId).value("seen").toObject()) {
+        if (positionMoved(currentSeen(row), bookState(row.contentId).value("seen").toObject())) {
             QJsonObject book = bookState(row.contentId);
             const kobalt::State state = kobalt::readState(row.contentId);
             book["changed_at"] = double(qMax(row.modifiedMs(), state.modifiedMs) / 1000);
@@ -339,15 +339,57 @@ QJsonObject Controller::currentSeen(const BookRow &row) const {
     return seen;
 }
 
+// Nickel recomputes the percentage whenever its reader opens a book, and a
+// Kobalt close may update the percentage without the location (plain EPUB
+// files). Only a moved location, in either reader, is a reading change.
+bool Controller::positionMoved(const QJsonObject &seen, const QJsonObject &previous) {
+    return seen.value("chapter") != previous.value("chapter") || seen.value("kobalt") != previous.value("kobalt");
+}
+
 void Controller::noteChange(const QString &contentId) {
     const BookRow row = nickeldb::row(contentId);
     QJsonObject book = bookState(contentId);
     const QJsonObject seen = currentSeen(row);
-    if (seen == book.value("seen").toObject() && book.contains("changed_at"))
+    const bool moved = positionMoved(seen, book.value("seen").toObject());
+    if (!moved && book.contains("changed_at")) {
+        book["seen"] = seen;
+        setBookState(contentId, book);
         return;
+    }
     book["changed_at"] = double(nowSeconds());
     book["seen"] = seen;
     setBookState(contentId, book);
+}
+
+void Controller::mirrorKobaltPosition(const BookRow &row, const LocalPosition &local) {
+    if (local.source != "kobalt" || !local.valid || local.progress.isEmpty())
+        return;
+    const kobalt::State state = kobalt::readState(row.contentId);
+    if (state.raw.value("native_writeback").toString() != "time-only")
+        return;
+    if (nickeldb::readingViewActive() || (QFile::exists(kobaltMarkerFile) && kobalt::activeBook() == row.contentId))
+        return;
+    Epub epub;
+    QString error, location;
+    if (!epub.open(row.filePath(), &error) || !nickelFromXPointer(epub, row, local.progress, &location, &error)) {
+        debug(label(row) + ": cannot mirror Kobalt's position into Nickel's library: " + error);
+        return;
+    }
+    const QString current = nickeldb::chapterLocation(row.contentId, row.chapter);
+    if (nickeldb::sharedLocation(location) == nickeldb::sharedLocation(current))
+        return;
+    if (!nickeldb::writePosition(row.contentId, location, local.percentage * 100.0, local.finished, &error)) {
+        debug(label(row) + ": Nickel's library was not updated with Kobalt's position: " + error);
+        return;
+    }
+    // Keep Kobalt's baseline in step so it does not take the row as news.
+    const NativeSnapshot snapshot = nickeldb::snapshot(nickeldb::row(row.contentId));
+    if (!kobalt::writePosition(row.contentId, state.position, snapshot, &error))
+        debug(label(row) + ": Kobalt's baseline was not updated: " + error);
+    QJsonObject book = bookState(row.contentId);
+    book["seen"] = currentSeen(nickeldb::row(row.contentId));
+    setBookState(row.contentId, book);
+    log(label(row) + ": Nickel's reader now opens at Kobalt's position (" + percentText(local.percentage) + ")");
 }
 
 QString Controller::documentId(const QString &filePath) const {
@@ -530,6 +572,7 @@ void Controller::syncBook(const QString &contentId) {
         return;
     }
     const LocalPosition local = localPosition(row);
+    mirrorKobaltPosition(row, local);
     debug(QString("checking %1: local %2 at %3 (%4), document %5")
               .arg(label(row), local.valid ? local.progress : "none", percentText(local.percentage), local.source, document));
     inFlight_ = true;

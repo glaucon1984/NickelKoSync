@@ -65,6 +65,10 @@ private:
     QString documentId(const QString &filePath) const;
     void noteChange(const QString &contentId);
     QJsonObject currentSeen(const BookRow &row) const;
+    static bool positionMoved(const QJsonObject &seen, const QJsonObject &previous);
+    // Writes Kobalt's position into Nickel's library when Kobalt could not
+    // (plain EPUB files), so Nickel's reader opens where Kobalt left off.
+    void mirrorKobaltPosition(const BookRow &row, const LocalPosition &local);
 
     // the queue
     void enqueue(const QString &contentId, const char *reason);
