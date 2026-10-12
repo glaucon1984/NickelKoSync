@@ -69,38 +69,59 @@ own cloud sync are left alone.
 1. Download `KoboRoot.tgz` from the latest release.
 2. Connect the Kobo over USB and copy it to the hidden `.kobo` folder on the device.
 3. Eject. The Kobo reboots and installs the mod.
-4. Enter the server, username and password of the account you use in KOReader's
-   *Progress sync*: either from the *KOSync* entry in NickelMenu's main menu, or by copying
-   `.adds/kosync/config.sample.ini` to `config.ini` and filling in `[server]` over USB. No
-   reboot is needed; the mod re-reads the file when it changes.
-5. Check `.adds/kosync/log.txt` after the first sync: it should say
+4. Open the main menu, tap **KOSync**, then tap *Server*, *Username* and *Password* and type
+   the account you use in KOReader's *Progress sync* on the on-screen keyboard. The official
+   server address is filled in already. That's all; nothing needs editing over USB.
+5. Tap *Sync now*. A notice reports the result, and `.adds/kosync/log.txt` says
    `signed in to <server> as <user>`.
 
-With [NickelMenu](https://pgaskin.net/NickelMenu/) installed, the mod adds a *KOSync* entry
-to the main menu by itself (turn it off with `menu = false`). It opens the KOSync screen:
-*Sync now*, *Check whole library*, the server, username and password (typed on an on-screen
-keyboard), and the other settings as buttons that cycle through their values. `menu_log = true` adds a *KOSync log* entry that shows the last lines of the log.
-After each sync a notice at the bottom of the screen lists what moved or was sent, three
-lines at most ("and N more"); tap it to dismiss it, or it goes away by itself.
+The KOSync menu entry comes from [NickelMenu](https://pgaskin.net/NickelMenu/), which the
+mod adds to by itself. Without NickelMenu, set the account in `.adds/kosync/config.ini`
+instead (see below) and trigger syncs with the `sync-now` file.
 
-## Configuration
+## The KOSync screen
 
-`config.sample.ini` documents every setting. The ones that matter:
+Everything day-to-day lives on the KOSync screen, laid out like Kobo's own settings:
 
-| Setting | Default | Meaning |
-|---|---|---|
-| `[server] url` | `https://sync.koreader.rocks` | Any KOSync-compatible server |
-| `[server] username`, `password` | | The account; `password_md5` can replace `password` |
-| `[server] device` | `Kobo` | Device name shown on other readers |
-| `[sync] document_id` | `binary` | `binary` (file content) or `filename`, as in KOReader |
-| `[sync] pull` | `newer` | `newer` (newest wins), `forward` (only ahead), `off` |
-| `[sync] recent_books` | `3` | Books checked per sync |
-| `[sync] pull_interval_minutes` | `15` | Check interval while online |
-| `[wifi] mode` | `connect` | `connect` asks Nickel for Wi-Fi when needed; `keep` never does |
-| `[sync] on_open` | `true` | Check a book against the server when it is opened |
-| `[options] notify` | `true` | Nickel notification after a sync |
-| `[options] menu`, `menu_log` | `true`, `false` | NickelMenu entries |
-| `[options] verbose` | `false` | Log every decision |
+- **Sync now** checks the recently read books and **Check whole library** every EPUB on the
+  device. Both always report what happened in a notice.
+- **Account**: server, username, password, each opening a keyboard page.
+- **Sync**: how positions from other devices are taken (newest wins, forward only, ignore),
+  whether this device sends its progress, whether a book is checked when opened, Wi-Fi
+  (connect when needed or leave alone), and how books are matched (file content or file
+  name). Multi-value settings open a pop-up that explains each choice.
+- **Options**: notifications, a *KOSync log* menu entry, detailed logging.
+
+Changes take effect at once. After each sync a notice at the bottom of the screen lists
+what moved or was sent, three lines at most ("and N more"); tap it to dismiss it, or it
+goes away by itself.
+
+## config.ini
+
+The screen writes its settings to `.adds/kosync/config.ini`, so the file is also the way to
+configure the mod over USB, and the only way for the few settings that are not on the
+screen. `config.sample.ini` next to it documents every key; anything left out takes its
+default.
+
+| Setting | Default | On screen | Meaning |
+|---|---|---|---|
+| `[server] url` | `https://sync.koreader.rocks` | yes | Any KOSync-compatible server |
+| `[server] username`, `password` | | yes | The account; `password_md5` can replace `password` |
+| `[server] device` | `Kobo` | | Device name shown on other readers |
+| `[server] insecure`, `ca_file` | `false`, | | TLS: accept any certificate, or add your own CA |
+| `[sync] pull` | `newer` | yes | `newer` (newest wins), `forward` (only ahead), `off` |
+| `[sync] push` | `true` | yes | Send this device's progress |
+| `[sync] on_open` | `true` | yes | Check a book against the server when it is opened |
+| `[sync] document_id` | `binary` | yes | `binary` (file content) or `filename`, as in KOReader |
+| `[sync] recent_books` | `3` | | Books covered by "recent" checks |
+| `[sync] pull_interval_minutes` | `15` | | Background check interval while online |
+| `[sync] send_metadata` | `false` | | Send file name, title and author with each push |
+| `[wifi] mode` | `connect` | yes | `connect` asks Nickel for Wi-Fi when needed; `keep` never does |
+| `[wifi] cooldown_minutes` | `10` | | Minimum gap between Wi-Fi requests |
+| `[options] notify` | `true` | yes | Notice after a sync |
+| `[options] menu`, `menu_log` | `true`, `false` | `menu_log` | KOSync menu entry, log menu entry |
+| `[options] max_books` | `300` | | Cap for "Check whole library" |
+| `[options] verbose` | `false` | yes | Log every decision |
 
 ## Files
 

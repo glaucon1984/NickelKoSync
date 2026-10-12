@@ -7,13 +7,16 @@ reader, and talks to the same server and account as KOReader and CrossPoint.
 
 Set-up
 ------
-1. Copy config.sample.ini to config.ini in this folder.
-2. Fill in url (leave the default for the official server), username and
-   password. These are the same as in KOReader > Progress sync.
-3. Keep document_id = binary if the same book files are on all your devices
-   (the usual case); use filename if only the names match.
-4. Eject the Kobo. The mod re-reads config.ini within seconds; nothing to
-   reboot. log.txt reports "signed in to ..." on the first sync.
+Open the main menu, tap KOSync, then Server, Username and Password, and type
+the account you use in KOReader > Progress sync. Tap Sync now. That is all.
+
+Everything else is on that screen too (how other devices' positions are
+taken, sending progress, checking on open, Wi-Fi, how books are matched,
+notifications, logging). The screen writes config.ini in this folder; the
+file can also be edited over USB, see config.sample.ini for every key,
+including the few that are not on the screen. The mod re-reads it within
+seconds; nothing to reboot. log.txt reports "signed in to ..." on the
+first sync.
 
 How it syncs
 ------------
