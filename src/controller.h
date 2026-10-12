@@ -76,7 +76,7 @@ private:
     void writeNickelMenu();
     void showSettings();
     void toast(const QString &title, const QString &body);
-    void noteEvent(const QString &text);
+    void noteEvent(const QString &text, bool important = false);
     void flushEvents();
     void onBookOpened(const QString &contentId, const char *reader);
     QString openBook() const;
@@ -115,6 +115,7 @@ private:
     qint64 lastWifiRequest_ = 0, lastPeriodic_ = 0, lastQueueLog_ = 0, retryAfter_ = 0;
     QDateTime configModified_;
     QStringList events_;
+    bool importantEvents_ = false;
     QString lastEvent_;
     QString appliedLocation_;   // Nickel location written by the last apply()
     qint64 holdUntil_ = 0;      // ms; 0 = not decided for this sleep, -1 = no hold
