@@ -2,10 +2,10 @@
 
 ## Unreleased
 
-- After a Kobalt close of a plain EPUB (where Kobalt stores only the percentage in Nickel's
-  library), Kobalt's position is written into the library in Nickel's format, so Nickel's
-  reader opens there too. Opening a book in Nickel without moving no longer counts as a
-  new position.
+- Plain EPUB files: after a Kobalt close, Kobalt's position is written into Nickel's
+  library in Nickel's format; after a Nickel close, Nickel's position is given to Kobalt as
+  an XPointer. Each reader opens where the other left off instead of at the chapter start.
+  Opening a book in Nickel without moving no longer counts as a new position.
 
 - If the server holds a later position from this same device than the one it now has (for
   example after reinstalling Kobalt, or when Nickel's reader opened a row Kobalt had not

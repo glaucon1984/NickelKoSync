@@ -370,6 +370,30 @@ void Controller::noteChange(const QString &contentId) {
     setBookState(contentId, book);
 }
 
+void Controller::mirrorNickelPosition(const BookRow &row, const LocalPosition &local) {
+    if (local.source != "nickel" || !local.valid || local.progress.isEmpty())
+        return;
+    const kobalt::State state = kobalt::readState(row.contentId);
+    if (!state.exists)
+        return;
+    if (nickeldb::readingViewActive() || (QFile::exists(kobaltMarkerFile) && kobalt::activeBook() == row.contentId))
+        return;
+    const NativeSnapshot snapshot = nickeldb::snapshot(row);
+    if (snapshot.location == state.nativeLocation && snapshot.modifiedMs == state.nativeModifiedMs)
+        return;  // Kobalt already knows this row
+    if (paragraphKey(state.position) == paragraphKey(local.progress) && state.nativeModifiedMs == snapshot.modifiedMs)
+        return;
+    QString error;
+    if (!kobalt::writePosition(row.contentId, local.progress, snapshot, &error)) {
+        debug(label(row) + ": Kobalt's saved position was not updated from Nickel's: " + error);
+        return;
+    }
+    QJsonObject book = bookState(row.contentId);
+    book["seen"] = currentSeen(nickeldb::row(row.contentId));
+    setBookState(row.contentId, book);
+    log(label(row) + ": Kobalt now opens at Nickel's position (" + percentText(local.percentage) + ")");
+}
+
 void Controller::mirrorKobaltPosition(const BookRow &row, const LocalPosition &local) {
     if (local.source != "kobalt" || !local.valid || local.progress.isEmpty())
         return;
@@ -617,6 +641,7 @@ void Controller::syncBook(const QString &contentId) {
     }
     const LocalPosition local = localPosition(row);
     mirrorKobaltPosition(row, local);
+    mirrorNickelPosition(row, local);
     debug(QString("checking %1: local %2 at %3 (%4), document %5")
               .arg(label(row), local.valid ? local.progress : "none", percentText(local.percentage), local.source, document));
     inFlight_ = true;

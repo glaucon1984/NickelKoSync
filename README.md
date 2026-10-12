@@ -122,10 +122,12 @@ Everything lives in `.adds/kosync/`:
   from outside).
 - Positions are compared by paragraph. A reader that reopens an applied position reports it
   as its own slightly different XPointer, which is not sent back as a new position.
-- For plain (non-kepub) EPUB files Kobalt can store only the percentage in Nickel's library,
-  not the place, so Nickel's reader would open where it last was itself. The mod fills that
-  gap: after a Kobalt close it writes Kobalt's position into the library in Nickel's own
-  format, so both readers open at the same place.
+- For plain (non-kepub) EPUB files Kobalt and Nickel's reader cannot read each other's
+  positions: Kobalt stores only the percentage in Nickel's library, and it cannot decode
+  Nickel's own location, so after a session in the other reader each would open at the
+  start of the chapter. The mod keeps the two in step: after a Kobalt close it writes
+  Kobalt's position into the library in Nickel's format, and after a Nickel close it gives
+  Kobalt Nickel's position as an XPointer, so both readers open at the same place.
 
 ## Uninstall
 

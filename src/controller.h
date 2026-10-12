@@ -70,6 +70,10 @@ private:
     // Writes Kobalt's position into Nickel's library when Kobalt could not
     // (plain EPUB files), so Nickel's reader opens where Kobalt left off.
     void mirrorKobaltPosition(const BookRow &row, const LocalPosition &local);
+    // After Nickel's reader moved a book, gives Kobalt that position as its own
+    // XPointer with the row as baseline. Kobalt cannot decode Nickel's location
+    // for most plain EPUB files and would otherwise open at the chapter start.
+    void mirrorNickelPosition(const BookRow &row, const LocalPosition &local);
 
     // the queue
     void enqueue(const QString &contentId, const char *reason);
