@@ -7,6 +7,7 @@
 #include "mapping.h"
 #include "nickel.h"
 #include "nickeldb.h"
+#include "notice.h"
 #include "settings_dialog.h"
 #include "touch_input.h"
 #include "xpath.h"
@@ -804,12 +805,8 @@ void Controller::showSettings() {
 void Controller::toast(const QString &title, const QString &body) {
     if (!config_.notify)
         return;
-    const nickel::Api &api = nickel::api();
-    if (!api.toast || !api.mainWindowController)
-        return;
-    void *controller = api.mainWindowController();
-    if (controller)
-        api.toast(controller, title, body, 5000);
+    // The mod's own notice: it goes away when tapped, or after a few seconds.
+    Notice::show(title, body, 7000);
 }
 
 void Controller::noteEvent(const QString &text) {

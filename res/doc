@@ -36,8 +36,9 @@ How it syncs
   library, the server address, username and password (typed on the screen's
   own keyboard), and the other settings as buttons that cycle through their
   values. Everything is saved to config.ini.
-- After a sync, Nickel's notification bubble lists what moved or was sent
-  (notify = false turns it off).
+- After a sync a notice at the bottom of the screen lists what moved or was
+  sent; tap it to dismiss, or it goes away by itself (notify = false turns it
+  off).
 - A book that has only been opened here, at the cover, never overrides what
   another device stored for it.
 

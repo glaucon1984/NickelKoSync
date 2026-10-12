@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Notifications are the mod's own notice box: tap to dismiss, or it disappears after a
+  few seconds.
+
 ## v0.1.1 — 2026-10-11
 
 - Uninstall also removes the generated NickelMenu entry; README documents the uninstall

@@ -80,8 +80,8 @@ With [NickelMenu](https://pgaskin.net/NickelMenu/) installed, the mod adds a *KO
 to the main menu by itself (turn it off with `menu = false`). It opens the KOSync screen:
 *Sync now*, *Check whole library*, the server, username and password (typed on an on-screen
 keyboard), and the other settings as buttons that cycle through their values. `menu_log = true` adds a *KOSync log* entry that shows the last lines of the log.
-After each sync Nickel's notification bubble lists what moved or was sent, three lines at
-most ("and N more").
+After each sync a notice at the bottom of the screen lists what moved or was sent, three
+lines at most ("and N more"); tap it to dismiss it, or it goes away by itself.
 
 ## Configuration
 
