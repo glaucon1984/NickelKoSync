@@ -18,14 +18,14 @@ Kobalt stores each book's position as a CREngine XPointer in its own saved state
 writes Nickel's library database like Nickel's reader does. The mod lives in the same
 process as both readers and works at that storage layer:
 
-- **Push.** When a book is closed, or the device goes to sleep with it open, the mod reads the position (Kobalt's XPointer, or
+- **Push.** When a book is closed, the mod reads the position (Kobalt's XPointer, or
   Nickel's chapter position translated into an XPointer through the chapter's XHTML)
   and sends it to the server with the percentage read. Offline, it asks Nickel to turn
   Wi-Fi on and sends as soon as the device is online.
 - **Pull.** Whenever the device is online it checks books against the server: the recently
   read books at start, after Nickel's own Sync, on request and every 15 minutes while
-  online; a book when it is opened or the device wakes with it open; and the whole library
-  from *Check whole library* on the KOSync screen. A newer position from another device is written into Kobalt's
+  online; a book when it is opened; and the whole library from *Check whole library* on
+  the KOSync screen. A newer position from another device is written into Kobalt's
   saved state and into Nickel's library, so the next opening starts there, also for books
   never opened on the Kobo. If Kobalt has that book open at the time, Kobalt itself offers
   to jump there, as it does for any position changed outside it.
@@ -97,7 +97,7 @@ lines at most ("and N more"); tap it to dismiss it, or it goes away by itself.
 | `[sync] recent_books` | `3` | Books checked per sync |
 | `[sync] pull_interval_minutes` | `15` | Check interval while online |
 | `[wifi] mode` | `connect` | `connect` asks Nickel for Wi-Fi when needed; `keep` never does |
-| `[sync] on_open` | `true` | Check a book when opened, and on wake with it open |
+| `[sync] on_open` | `true` | Check a book against the server when it is opened |
 | `[options] notify` | `true` | Nickel notification after a sync |
 | `[options] menu`, `menu_log` | `true`, `false` | NickelMenu entries |
 | `[options] verbose` | `false` | Log every decision |
@@ -137,11 +137,13 @@ Installing a newer `KoboRoot.tgz` over an existing installation needs no uninsta
 
 ## Limits
 
-- A position is sent at sleep only if Wi-Fi is still on at that moment. Nickel switches Wi-Fi
-  off after a few idle minutes of reading; a position queued then goes out at the next
-  connection. Holding the device awake to connect would need a hook on the power manager
-  function Kobalt also hooks, and NickelHook does not chain two mods on one function, so
-  the mod stays out of it.
+- **Standby does not sync; close the book.** Nickel switches Wi-Fi off after a few idle
+  minutes of reading, so at standby there is usually no connection, and an open book cannot
+  be moved on wake anyway (Nickel's reader never, Kobalt after its one-minute poll). Rather
+  than a sync that works only sometimes, the mod syncs on close, on open (with a reminder)
+  and on request. Holding the device awake at standby to connect would need a hook on the
+  power-manager function Kobalt also hooks, and NickelHook does not chain two mods on one
+  function.
 - The mod installs no hooks at all; everything goes through Nickel's exported functions and
   files, which is also why it survives Kobalt updates.
 

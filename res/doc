@@ -19,7 +19,8 @@ How it syncs
 ------------
 - When you close a book (in Kobalt or in Nickel's reader) the mod pushes the
   position to the server. If the device is offline it asks Nickel to connect to
-  Wi-Fi (see [wifi] in config.ini) and pushes as soon as it is online.
+  Wi-Fi (see [wifi] in config.ini) and pushes as soon as it is online. Putting
+  the device on standby with a book open does not sync: close the book first.
 - Whenever it is online it also checks the server for the recently read books.
   A newer position from another device is applied so the book opens there next
   time, in Kobalt and in Nickel's reader alike. If Kobalt has that very book
@@ -30,7 +31,9 @@ How it syncs
   the KOSync screen checks every EPUB on the device (a second or two per
   book), so a book begun on another device opens at the right place the first
   time here.
-- Opening a book, or waking the device with a book open, checks that book.
+- Opening a book checks it against the server. A newer position reaches
+  Kobalt's own prompt within a minute; in Nickel's reader a notice says to
+  close and reopen the book.
 - With NickelMenu installed the mod adds a "KOSync" entry to the main menu
   (menu = false removes it). It opens the KOSync screen: Sync now, Check whole
   library, the server address, username and password (typed on the screen's

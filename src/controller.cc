@@ -85,7 +85,6 @@ void Controller::start() {
     kobaltMarker_ = QFile::exists(kobaltMarkerFile);
     kobaltBook_ = kobaltMarker_ ? kobalt::activeBook() : QString();
     readingView_ = nickeldb::readingViewActive();
-    wasAsleep_ = !awake();
 
     installTouchInput(this);
     tickTimer_ = new QTimer(this);
@@ -285,29 +284,9 @@ void Controller::tick() {
         QFile::remove(settingsFile);
         showSettings();
     }
-    const bool asleep = !awake();
-    if (!wasAsleep_ && asleep) {
-        // Kobalt saves its position as the device goes to sleep but writes
-        // Nickel's library only on close; send it now, while Wi-Fi may be up.
-        const QString book = openBook();
-        if (!book.isEmpty()) {
-            debug("going to sleep with " + book + " open");
-            noteChange(book);
-            enqueue(book, "sleep");
-            if (online())
-                continueQueue();
-            else
-                requestWifi(true);  // best effort: Nickel may or may not connect before it suspends
-        }
-    }
-    if (wasAsleep_ && !asleep) {
-        const QString book = openBook();
-        if (!book.isEmpty()) {
-            debug("woke up with " + book + " open");
-            onBookOpened(book, "wake");
-        }
-    }
-    wasAsleep_ = asleep;
+    // Standby and wake are left alone on purpose: at standby Wi-Fi is usually
+    // already off, and a position applied at wake reaches an open book only
+    // after a reopen (Nickel) or a minute (Kobalt). Closing the book syncs.
     const bool reading = nickeldb::readingViewActive();
     if (reading && !readingView_) {
         const QList<BookRow> recent = nickeldb::recentBooks(1);
@@ -772,8 +751,8 @@ QString Controller::openBook() const {
 void Controller::onBookOpened(const QString &contentId, const char *reader) {
     if (!config_.onOpen || contentId.isEmpty() || !configOk_)
         return;
-    // A newer position elsewhere reaches Nickel's library; Kobalt then offers
-    // it within a minute. Nickel's reader only benefits at its next opening.
+    // A newer position elsewhere reaches Nickel's library; Kobalt offers it
+    // within a minute, and for Nickel's reader a notice says to reopen.
     enqueue(contentId, reader);
     if (!online())
         requestWifi();

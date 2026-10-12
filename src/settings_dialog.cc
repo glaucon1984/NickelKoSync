@@ -206,7 +206,7 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
               int(config.pull));
     addOption(rows, "sync", "push", "Send my progress", list("true", "false"), list("On", "Off"), QStringList(),
               config.push ? 0 : 1);
-    addOption(rows, "sync", "on_open", "Check on open and wake", list("true", "false"), list("On", "Off"),
+    addOption(rows, "sync", "on_open", "Check when a book is opened", list("true", "false"), list("On", "Off"),
               QStringList(), config.onOpen ? 0 : 1);
     addOption(rows, "wifi", "mode", "Wi-Fi", list("connect", "keep"), list("Connect if needed", "Leave alone"),
               list("Ask Nickel to turn Wi-Fi on when there is something to sync and the Kobo is offline. "

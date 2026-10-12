@@ -28,7 +28,7 @@ struct Config {
     int recentBooks = 3;
     int pullIntervalMinutes = 15;
     bool sendMetadata = false;
-    bool onOpen = true;    // check a book when it is opened / the device wakes with it open
+    bool onOpen = true;    // check a book against the server when it is opened
 
     // [wifi]
     bool connectWifi = true;

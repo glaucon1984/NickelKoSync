@@ -116,7 +116,6 @@ private:
     QString appliedLocation_;   // Nickel location written by the last apply()
     bool manualSync_ = false;   // started from the screen: always report the outcome
     int checkedSinceManual_ = 0;
-    bool wasAsleep_ = false;
     QPointer<SettingsDialog> dialog_;
 };
 

@@ -8,10 +8,11 @@
 
 - Notifications are the mod's own notice box: tap to dismiss, or it disappears after a
   few seconds.
-- At sleep, an unsent position of the open book is queued and Wi-Fi is requested; it goes
-  out if the connection is still up, otherwise at the next one. (A build between v0.1.1 and
-  this one hooked the power manager to hold the sleep; that cut out Kobalt's hook on the
-  same function and was withdrawn.)
+- Standby and wake no longer trigger a sync: at standby Wi-Fi is usually off already and an
+  open book cannot be moved on wake, so the behaviour was unpredictable. Close the book to
+  sync; opening a book still checks and reminds. (A build between v0.1.1 and this one
+  hooked the power manager to hold the sleep; that cut out Kobalt's hook on the same
+  function and was withdrawn.)
 
 ## v0.1.1 — 2026-10-11
 
