@@ -51,6 +51,7 @@ private slots:
     void networkTick();
     void onNickelSyncFinished();
     void continueQueue();
+    void applyDeferred();
 
 private:
     // configuration and persistent state
@@ -105,7 +106,9 @@ private:
     QTimer *tickTimer_ = 0, *networkTimer_ = 0;
 
     QStringList queue_;
-    QSet<QString> deferred_;
+    QHash<QString, RemoteProgress> deferred_;  // positions parked while Nickel's reader had the book open
+    QStringList deferredNow_;                  // books whose reader just closed
+    QTimer *deferredTimer_ = 0;
     QHash<QString, int> failures_;
     QMap<QString, qint64> pendingCloses_;  // content id -> when the reader closed it (ms)
     bool inFlight_ = false;

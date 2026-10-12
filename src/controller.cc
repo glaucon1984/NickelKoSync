@@ -93,6 +93,9 @@ void Controller::start() {
     networkTimer_ = new QTimer(this);
     connect(networkTimer_, &QTimer::timeout, this, &Controller::networkTick);
     networkTimer_->start(networkMs);
+    deferredTimer_ = new QTimer(this);
+    deferredTimer_->setSingleShot(true);
+    connect(deferredTimer_, &QTimer::timeout, this, &Controller::applyDeferred);
 
     const nickel::Api &api = nickel::api();
     if (api.syncManager) {
@@ -298,6 +301,12 @@ void Controller::tick() {
         if (!recent.isEmpty()) {
             debug("Nickel's reader closed " + recent[0].contentId);
             pendingCloses_[recent[0].contentId] = QDateTime::currentMSecsSinceEpoch();
+            if (deferred_.contains(recent[0].contentId)) {
+                // The position parked while the reader was open: apply it now,
+                // before the book is opened again, once Nickel has written its row.
+                deferredNow_.append(recent[0].contentId);
+                deferredTimer_->start(800);
+            }
         }
     }
     readingView_ = reading;
@@ -459,7 +468,6 @@ void Controller::enqueue(const QString &contentId, const char *reason) {
     if (contentId.isEmpty() || queue_.contains(contentId))
         return;
     queue_.append(contentId);
-    deferred_.remove(contentId);
     debug(QString("queued %1 (%2)").arg(contentId, reason));
     saveState();
 }
@@ -551,6 +559,42 @@ void Controller::finishBook(const QString &contentId, bool success) {
         dialog_->setStatus(statusText());
 }
 
+void Controller::applyDeferred() {
+    const QStringList books = deferredNow_;
+    deferredNow_.clear();
+    foreach (const QString &contentId, books) {
+        if (!deferred_.contains(contentId))
+            continue;
+        const RemoteProgress remote = deferred_.take(contentId);
+        const BookRow row = nickeldb::row(contentId);
+        if (!row.valid)
+            continue;
+        const LocalPosition local = localPosition(row);
+        if (local.valid && paragraphKey(local.progress) == paragraphKey(remote.progress))
+            continue;
+        QString error;
+        if (!apply(row, remote, local, &error)) {
+            if (error == "deferred")
+                deferred_.insert(contentId, remote);
+            else
+                log(label(row) + ": could not apply the parked position: " + error);
+            continue;
+        }
+        log(QString("%1: moved to %2 from %3 (after the reader closed)")
+                .arg(label(row), percentText(remote.percentage), remote.device));
+        QJsonObject book = bookState(contentId);
+        book["applied"] = remote.progress;
+        book["applied_timestamp"] = double(remote.timestamp);
+        book["applied_location"] = appliedLocation_;
+        book["pushed"] = remote.progress;
+        book["pushed_percentage"] = remote.percentage;
+        book["seen"] = currentSeen(nickeldb::row(contentId));
+        setBookState(contentId, book);
+        toast("KOSync", QString("%1 is now at %2 (from %3). Open it to continue there.")
+                            .arg(label(row), percentText(remote.percentage), remote.device));
+    }
+}
+
 void Controller::continueQueue() {
     if (!configOk_ || authFailed_ || inFlight_ || queue_.isEmpty() || nowSeconds() < retryAfter_ || !online())
         return;
@@ -621,8 +665,8 @@ void Controller::syncBook(const QString &contentId) {
                 book["seen"] = currentSeen(nickeldb::row(contentId));
                 setBookState(contentId, book);
             } else if (error == "deferred") {
-                debug(label(row) + ": Nickel's reader is open, restoring later");
-                deferred_.insert(contentId);
+                debug(label(row) + ": Nickel's reader is open, parking the position to restore");
+                deferred_.insert(contentId, remote);
                 finishBook(contentId, true);
                 return;
             } else {
@@ -650,9 +694,9 @@ void Controller::syncBook(const QString &contentId) {
                     book["seen"] = currentSeen(nickeldb::row(contentId));
                     setBookState(contentId, book);
                 } else if (error == "deferred") {
-                    debug(label(row) + ": Nickel's reader is open, trying again later");
-                    deferred_.insert(contentId);
-                    toast("KOSync", QString("%1: %2 is at %3. Close and reopen the book to move there.")
+                    debug(label(row) + ": Nickel's reader is open, parking the position");
+                    deferred_.insert(contentId, remote);
+                    toast("KOSync", QString("%1: %2 is at %3. Close the book to move there, then reopen it.")
                                         .arg(label(row), remote.device, percentText(remote.percentage)));
                     finishBook(contentId, true);
                     return;
