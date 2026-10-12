@@ -1,23 +1,28 @@
 # Changelog
 
-## Unreleased
+## v0.2.0 — 2026-10-12
 
 - Plain EPUB files: after a Kobalt close, Kobalt's position is written into Nickel's
   library in Nickel's format; after a Nickel close, Nickel's position is given to Kobalt as
   an XPointer. Each reader opens where the other left off instead of at the chapter start.
-  Opening a book in Nickel without moving no longer counts as a new position.
-
+- Opening a book in Nickel without moving no longer counts as a new position; positions are
+  compared by paragraph, so a reopened position is not echoed back to the server.
 - If the server holds a later position from this same device than the one it now has (for
-  example after reinstalling Kobalt, or when Nickel's reader opened a row Kobalt had not
-  written yet), that position is restored instead of the older one being sent back.
-
-- Notifications are the mod's own notice box: tap to dismiss, or it disappears after a
-  few seconds.
+  example after reinstalling Kobalt), that position is restored instead of the older one
+  being sent back.
+- A position parked while Nickel's reader had the book open is applied right after the
+  reader closes, and a notice says the book is ready to reopen.
+- Notifications are the mod's own notice box: tap to dismiss, or it disappears after a few
+  seconds. Background runs that only sent positions stay quiet while a book is open.
 - Standby and wake no longer trigger a sync: at standby Wi-Fi is usually off already and an
   open book cannot be moved on wake, so the behaviour was unpredictable. Close the book to
   sync; opening a book still checks and reminds. (A build between v0.1.1 and this one
   hooked the power manager to hold the sleep; that cut out Kobalt's hook on the same
-  function and was withdrawn.)
+  function and was withdrawn. The mod installs no hooks.)
+- Whole-library check is manual only ("Check whole library"); queued books follow each
+  other without waiting for the network timer.
+- KOSync screen laid out like Kobo's settings, with switches, pop-up choices with
+  explanations, a sans-serif keyboard page, and sync buttons at the bottom.
 
 ## v0.1.1 — 2026-10-11
 
