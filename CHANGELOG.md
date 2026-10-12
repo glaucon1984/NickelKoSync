@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- If the server holds a later position from this same device than the one it now has (for
+  example after reinstalling Kobalt, or when Nickel's reader opened a row Kobalt had not
+  written yet), that position is restored instead of the older one being sent back.
+
 - Notifications are the mod's own notice box: tap to dismiss, or it disappears after a
   few seconds.
 - At sleep, an unsent position of the open book is queued and Wi-Fi is requested; it goes

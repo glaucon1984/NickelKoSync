@@ -578,7 +578,36 @@ void Controller::syncBook(const QString &contentId) {
         // here: whatever another device stored wins, however old. Otherwise the
         // later change wins.
         const bool unread = !local.valid || local.percentage < 0.005;
-        if (remoteOther && !samePlace) {
+        // The server holds a later position from this very device than the
+        // one it has now (Kobalt reinstalled, or Nickel's reader opened a row
+        // Kobalt had not written yet): the local copy regressed. Restore it
+        // rather than sending the older position back.
+        const bool ownRemote = remote.found && remote.deviceId == deviceId_ && !remote.progress.isEmpty();
+        if (ownRemote && !samePlace && local.valid && config_.pull != Config::PullOff && remote.timestamp > 0 &&
+            remote.timestamp >= local.changedAt && remote.percentage > local.percentage + 0.0001) {
+            QString error;
+            if (apply(row, remote, local, &error)) {
+                applied = true;
+                log(QString("%1: restored this device's own later position (%2, local copy had %3)")
+                        .arg(label(row), percentText(remote.percentage), percentText(local.percentage)));
+                noteEvent(QString("%1 \u2192 %2 (restored)").arg(label(row), percentText(remote.percentage)), true);
+                book["applied"] = remote.progress;
+                book["applied_timestamp"] = double(remote.timestamp);
+                book["applied_location"] = appliedLocation_;
+                book["pushed"] = remote.progress;
+                book["pushed_percentage"] = remote.percentage;
+                book["seen"] = currentSeen(nickeldb::row(contentId));
+                setBookState(contentId, book);
+            } else if (error == "deferred") {
+                debug(label(row) + ": Nickel's reader is open, restoring later");
+                deferred_.insert(contentId);
+                finishBook(contentId, true);
+                return;
+            } else {
+                log(label(row) + ": could not restore its later position: " + error);
+            }
+        }
+        if (!applied && remoteOther && !samePlace) {
             remoteNewer = unread ? remote.percentage > local.percentage + 0.0001
                                  : (remote.timestamp > 0 ? remote.timestamp > local.changedAt
                                                          : remote.percentage > local.percentage + 0.0001);
