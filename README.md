@@ -177,11 +177,16 @@ Installing a newer `KoboRoot.tgz` over an existing installation needs no uninsta
 ## Troubleshooting
 
 - *The KOSync menu entry does nothing, and `log.txt` has no new "starting" line after a
-  reboot*: the mod is no longer installed. NickelHook protects Nickel from a crashing mod by
-  renaming the library while it loads and restoring it a couple of seconds later; if Nickel
-  is stopped inside that window (a hard reboot or kernel panic, or a launcher that replaces
-  Nickel right after boot) the library stays renamed and the mod is gone from the next boot
-  on. Copy `KoboRoot.tgz` to `.kobo` again; settings, state and log are kept.
+  reboot*: the library was left under its fail-safe name. NickelHook protects Nickel from a
+  crashing mod by renaming the library while it loads and restoring it a couple of seconds
+  later; if Nickel is stopped inside that window (a hard reboot or kernel panic, or a
+  launcher that replaces Nickel right after boot) the file keeps that name, Qt still loads
+  it, and NickelHook refuses to start it, so the mod sits inert at every boot. Since v0.2.2
+  the mod notices this at load and renames itself back, so one more restart heals it. On
+  an older build, copy `KoboRoot.tgz` to `.kobo` again (settings, state and log are kept),
+  or run `repair.sh` from NickelMenu with
+  `menu_item :main :KOSync repair :cmd_output :9000 :sh /mnt/onboard/.adds/kosync/repair.sh`
+  in a file under `.adds/nm`, then restart.
 
 - *sign-in failed* in the log: check the username and password; the mod sends the MD5 of
   the password exactly as KOReader does. For a self-hosted server with a self-signed

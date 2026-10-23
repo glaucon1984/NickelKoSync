@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.2.2 — 2026-10-23
+
+- Self-repair after a crash inside NickelHook's fail-safe window: a library left under its
+  `.failsafe` name is still loaded by Qt but refused by NickelHook, so the mod sat inert at
+  every boot. It now renames itself back at load (or removes a stale copy), and one more
+  restart heals it. `repair.sh` ships for older installs. Ported from NickelTouchRemote.
+
 ## v0.2.1 — 2026-10-23
 
 - Shorter NickelHook fail-safe window (2 s instead of 5), so a Nickel stopped soon after

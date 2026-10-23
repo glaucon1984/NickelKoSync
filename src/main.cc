@@ -1,8 +1,11 @@
 // Entry point: NickelHook registration and start-up of the controller.
 #include <NickelHook.h>
 
+#include <dlfcn.h>
 #include <pthread.h>
 #include <stdio.h>
+#include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <QCoreApplication>
@@ -11,6 +14,48 @@
 
 #include "config.h"
 #include "controller.h"
+
+// NickelHook renames this library to "<name>.failsafe" while a mod starts and
+// renames it back from a helper thread a couple of seconds later. If Nickel
+// dies inside that window the file keeps the fail-safe name; Qt still loads
+// any file in the plugin folder, and NickelHook refuses to start a library
+// loaded under that name, so the mod would sit in memory, inert, at every
+// boot to come. This runs before NickelHook's constructor and puts the file
+// right: loaded under the fail-safe name it renames itself back (or removes
+// itself when a proper copy exists); loaded under the proper name it removes a
+// stale fail-safe sibling. One more restart then heals. Same as
+// NickelTouchRemote's healFailsafeCopy.
+__attribute__((constructor(101))) void healFailsafeCopy() {
+    Dl_info info;
+    if (!dladdr(reinterpret_cast<void *>(&healFailsafeCopy), &info) || !info.dli_fname)
+        return;
+    const char *path = info.dli_fname;
+    const char suffix[] = ".failsafe";
+    const size_t length = strlen(path), suffixLength = sizeof(suffix) - 1;
+    char real[4096];
+    if (length <= suffixLength || strcmp(path + length - suffixLength, suffix) != 0) {
+        if (length + suffixLength >= sizeof(real))
+            return;
+        snprintf(real, sizeof(real), "%s%s", path, suffix);
+        if (access(real, F_OK) == 0 && unlink(real) == 0) {
+            nh_log("kosync: removed the stale fail-safe copy %s", real);
+            sync();
+        }
+        return;
+    }
+    if (length - suffixLength >= sizeof(real))
+        return;
+    memcpy(real, path, length - suffixLength);
+    real[length - suffixLength] = 0;
+    struct stat st;
+    if (stat(real, &st) == 0) {
+        if (unlink(path) == 0)
+            nh_log("kosync: removed the stale fail-safe copy %s", path);
+    } else if (rename(path, real) == 0) {
+        nh_log("kosync: restored %s from its fail-safe copy; the mod starts at the next restart", real);
+    }
+    sync();
+}
 
 namespace {
 

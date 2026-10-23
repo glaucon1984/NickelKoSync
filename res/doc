@@ -53,6 +53,9 @@ Files in this folder
 config.ini          your settings (config.sample.ini is the reference)
 state.json          the mod's memory: device id, what was pushed and applied
 log.txt             what happened, newest at the end (log.txt.1 is older)
+repair.sh           puts the library right if a crash during start-up left it
+                    under its fail-safe name (the mod also does this itself
+                    at the next start); see the README
 sync-now            create this empty file to trigger a sync
 settings            create this empty file to open the KOSync screen
 uninstall           create this empty file and reboot to remove the mod; it
