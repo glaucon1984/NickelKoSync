@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Shorter NickelHook fail-safe window (2 s instead of 5), so a Nickel stopped soon after
+  boot is less likely to leave the mod uninstalled; README explains the symptom and the fix.
+
 ## v0.2.0 — 2026-10-12
 
 - Plain EPUB files: after a Kobalt close, Kobalt's position is written into Nickel's

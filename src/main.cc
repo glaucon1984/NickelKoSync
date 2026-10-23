@@ -71,7 +71,11 @@ struct nh_info info = {
     "Sync reading progress with KOReader's sync server",             // desc
     KS_CONFIG_DIR "/uninstall",                                      // uninstall_flag
     0,                                                               // uninstall_xflag
-    5,                                                               // failsafe_delay
+    // NickelHook keeps the library renamed for this long after loading and
+    // restores it from a thread; if Nickel is stopped before that (a hard
+    // reboot, a launcher that replaces Nickel right away) the mod stays
+    // uninstalled. Keep the window short: init itself is synchronous.
+    2,                                                               // failsafe_delay
 };
 
 // No hooks: NickelHook does not chain two mods hooking one Nickel function
