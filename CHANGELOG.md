@@ -1,9 +1,11 @@
 # Changelog
 
-## Unreleased
+## v0.2.1 — 2026-10-23
 
 - Shorter NickelHook fail-safe window (2 s instead of 5), so a Nickel stopped soon after
   boot is less likely to leave the mod uninstalled; README explains the symptom and the fix.
+- README and on-device doc describe set-up through the KOSync screen first; config.ini is
+  documented as the file the screen writes, with the few keys that are not on the screen.
 
 ## v0.2.0 — 2026-10-12
 
