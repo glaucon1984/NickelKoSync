@@ -20,15 +20,16 @@ strip:
 	$(STRIP) --strip-unneeded src/libkosync.so
 .PHONY: strip
 
-# Host build of the pure-Qt units (xpath, epub, digest). Needs a host Qt 5
-# (qtbase5-dev) and zlib; see tools/host-test.sh for a container that has them.
+# Host build of the pure-Qt units (xpath, epub, digest, Kobalt's state). Needs
+# a host Qt 5 (qtbase5-dev with the SQLite driver) and zlib; see
+# tools/host-test.sh for a container that has them.
 HOST_CXX ?= g++
 HOST_PKG_CONFIG ?= pkg-config
 test:
 	$(HOST_CXX) -std=c++11 -fPIC -Wall -Wextra -Werror -Wno-deprecated-declarations -Isrc -DKS_CONFIG_DIR='"/tmp/kosync"' \
-	    $(shell $(HOST_PKG_CONFIG) --cflags Qt5Core zlib) \
-	    tests/units_test.cc src/xpath.cc src/epub.cc src/digest.cc \
-	    $(shell $(HOST_PKG_CONFIG) --libs Qt5Core zlib) -o tests/units_test
+	    $(shell $(HOST_PKG_CONFIG) --cflags Qt5Core Qt5Sql zlib) \
+	    tests/units_test.cc src/xpath.cc src/epub.cc src/digest.cc src/kobalt_state.cc \
+	    $(shell $(HOST_PKG_CONFIG) --libs Qt5Core Qt5Sql zlib) -o tests/units_test
 	python3 tests/make_fixture.py tests/fixture.epub
 	tests/units_test tests/fixture.epub
 .PHONY: test

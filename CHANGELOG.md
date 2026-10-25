@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.2.3 — 2026-10-25
+
+- Kobalt v1.0-beta.4 keeps each book's saved state as a record in `.adds/kobalt/kobalt.sqlite`
+  instead of a JSON file per book. The mod now reads and writes that record (the file for
+  older Kobalt versions, or for a book beta 4 has not imported yet). Without this, Kobalt's
+  position was invisible to the mod: a position from another device reached Nickel's
+  library only, Kobalt opened at the chapter start, and the next close pushed that start.
+- The percentage sent for a book read in Kobalt is Kobalt's own (stored next to its
+  position since beta 4), not the one Nickel's library holds.
+- For plain EPUB files without element IDs beta 4 stores only the chapter in Nickel's
+  library; as for the older time-only write-back, the mod now adds Kobalt's position in
+  Nickel's form so Nickel's reader opens on the right page.
+- Host tests cover Kobalt's database record; they need Qt's SQLite driver
+  (`libqt5sql5-sqlite`).
+
 ## v0.2.2 — 2026-10-23
 
 - Self-repair after a crash inside NickelHook's fail-safe window: a library left under its

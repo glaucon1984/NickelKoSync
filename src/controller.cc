@@ -398,7 +398,16 @@ void Controller::mirrorKobaltPosition(const BookRow &row, const LocalPosition &l
     if (local.source != "kobalt" || !local.valid || local.progress.isEmpty())
         return;
     const kobalt::State state = kobalt::readState(row.contentId);
-    if (state.raw.value("native_writeback").toString() != "time-only")
+    // Kobalt stores a position in Nickel's row only when the element holding
+    // it has an ID. Otherwise it records the time alone ("time-only", up to
+    // v1.0-beta.3) or the chapter path alone (v1.0-beta.4, still "verified");
+    // either way Nickel's reader would open at the chapter start.
+    const QString current = nickeldb::chapterLocation(row.contentId, row.chapter);
+    QString currentPath, currentFragment;
+    nickeldb::splitLocation(current, &currentPath, &currentFragment);
+    const QString writeback = state.raw.value("native_writeback").toString();
+    const bool chapterOnly = writeback == "verified" && !current.isEmpty() && currentFragment.isEmpty();
+    if (!state.exists || (writeback != "time-only" && !chapterOnly))
         return;
     if (nickeldb::readingViewActive() || (QFile::exists(kobaltMarkerFile) && kobalt::activeBook() == row.contentId))
         return;
@@ -408,9 +417,10 @@ void Controller::mirrorKobaltPosition(const BookRow &row, const LocalPosition &l
         debug(label(row) + ": cannot mirror Kobalt's position into Nickel's library: " + error);
         return;
     }
-    const QString current = nickeldb::chapterLocation(row.contentId, row.chapter);
     if (nickeldb::sharedLocation(location) == nickeldb::sharedLocation(current))
         return;
+    if (chapterOnly && !location.contains('#'))
+        return;  // nothing more precise than the chapter the row already has
     if (!nickeldb::writePosition(row.contentId, location, local.percentage * 100.0, local.finished, &error)) {
         debug(label(row) + ": Nickel's library was not updated with Kobalt's position: " + error);
         return;
@@ -451,11 +461,14 @@ LocalPosition Controller::localPosition(const BookRow &row) const {
     if (kobaltCurrent) {
         position.source = "kobalt";
         position.progress = normalizeXPointer(state.position);
-        position.percentage = row.percent / 100.0;
+        // Kobalt v1.0-beta.4 stores the percentage of its own position next
+        // to it; older checkpoints only have Nickel's row to go by.
+        position.percentage = (state.percent >= 0 ? state.percent : row.percent) / 100.0;
         // A checkpoint newer than Nickel's row (sleep, or a failed write-back)
         // carries a position the row's percentage does not describe.
         const bool newerThanRow = state.modifiedMs > rowMs + 2000;
-        if (newerThanRow || state.raw.value("native_writeback").toString() != "verified" || row.percent <= 0) {
+        if (state.percent < 0 &&
+            (newerThanRow || state.raw.value("native_writeback").toString() != "verified" || row.percent <= 0)) {
             Epub epub;
             QString error;
             if (epub.open(path, &error))

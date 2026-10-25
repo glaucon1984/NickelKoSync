@@ -67,8 +67,9 @@ private:
     void noteChange(const QString &contentId);
     QJsonObject currentSeen(const BookRow &row) const;
     static bool positionMoved(const QJsonObject &seen, const QJsonObject &previous);
-    // Writes Kobalt's position into Nickel's library when Kobalt could not
-    // (plain EPUB files), so Nickel's reader opens where Kobalt left off.
+    // Writes Kobalt's position into Nickel's library when Kobalt stored only
+    // the time or the chapter (plain EPUB files without element IDs), so
+    // Nickel's reader opens where Kobalt left off.
     void mirrorKobaltPosition(const BookRow &row, const LocalPosition &local);
     // After Nickel's reader moved a book, gives Kobalt that position as its own
     // XPointer with the row as baseline. Kobalt cannot decode Nickel's location

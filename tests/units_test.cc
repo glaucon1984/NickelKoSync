@@ -1,16 +1,35 @@
-// Host tests for the Qt-only units: XHTML positions, EPUB access, digests.
-// Build and run with `make test` (needs a host Qt 5; see tools/host-test.sh).
+// Host tests for the Qt-only units: XHTML positions, EPUB access, digests,
+// Kobalt's saved state. Build and run with `make test` (needs a host Qt 5 with
+// the SQLite driver; see tools/host-test.sh).
 #include "digest.h"
 #include "epub.h"
+#include "kobalt_state.h"
+#include "log.h"
+#include "nickeldb.h"
 #include "xpath.h"
 
 #include <QCoreApplication>
 #include <QFile>
+#include <QJsonDocument>
+#include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QTemporaryDir>
 #include <QTextStream>
+#include <QVariant>
 
 #include <cstdio>
 
 using namespace kosync;
+
+// kobalt_state.cc reports through log.h, which goes to NickelHook on the
+// device; on the host, print instead.
+namespace kosync {
+static bool verboseLog = false;
+void setVerboseLogging(bool on) { verboseLog = on; }
+bool verboseLogging() { return verboseLog; }
+void log(const QString &message) { std::fprintf(stderr, "log: %s\n", message.toUtf8().constData()); }
+void debug(const QString &message) { if (verboseLog) log(message); }
+}
 
 static int failures = 0;
 
@@ -161,10 +180,117 @@ static void testEpub(const QString &path) {
     CHECK_EQ(filenameMd5(path), byName);
 }
 
+// Kobalt's book state: a book_state row in kobalt.sqlite (v1.0-beta.4, the
+// table as Kobalt creates it) and the legacy per-book JSON file.
+static void testKobaltState() {
+    QTemporaryDir dir;
+    CHECK(dir.isValid());
+    kobalt::setDirectory(dir.path());
+    const QString book = "file:///mnt/onboard/Books/Test - Author.epub";
+    const QString other = "file:///mnt/onboard/Books/Other.epub";
+    CHECK(!kobalt::hasDatabase());
+    CHECK(!kobalt::readState(book).exists);
+
+    const QByteArray payload =
+        "{\"book\":\"" + book.toUtf8() + "\",\"schema\":1,\"fingerprint\":\"abc\",\"percent\":5,"
+        "\"native_writeback\":\"verified\",\"sync_pending\":false,\"finished_position\":\"\","
+        "\"position\":\"/body[1]/DocFragment[6]/body[1]/p[76]/text()[1].578\","
+        "\"nickel_progress\":{\"book\":\"" + book.toUtf8() + "\",\"location\":\"OEBPS/c2H.xhtml\","
+        "\"modified\":\"1792923707000\",\"status\":1,\"valid\":true}}";
+    {
+        QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", "fixture");
+        db.setDatabaseName(kobalt::databasePath());
+        CHECK(db.open());
+        QSqlQuery query(db);
+        CHECK(query.exec("CREATE TABLE book_state(identity TEXT PRIMARY KEY NOT NULL,format INTEGER NOT NULL CHECK(format>0),"
+                         "revision INTEGER NOT NULL DEFAULT 0 CHECK(revision>=0),payload TEXT NOT NULL "
+                         "CHECK(length(CAST(payload AS BLOB))<=16384))"));
+        // Kobalt binds the identity and the payload as UTF-8 bytes cast to text.
+        CHECK(query.prepare("INSERT INTO book_state(payload,identity,format,revision) VALUES(CAST(? AS TEXT),CAST(? AS TEXT),1,3)"));
+        query.addBindValue(payload);
+        query.addBindValue(book.toUtf8());
+        CHECK(query.exec());
+        db.close();
+    }
+    QSqlDatabase::removeDatabase("fixture");
+    CHECK(kobalt::hasDatabase());
+
+    kobalt::State state = kobalt::readState(book);
+    CHECK(state.exists);
+    CHECK_EQ(state.position, "/body[1]/DocFragment[6]/body[1]/p[76]/text()[1].578");
+    CHECK(state.percent == 5);
+    CHECK(state.modifiedMs == 0);
+    CHECK_EQ(state.nativeLocation, "OEBPS/c2H.xhtml");
+    CHECK(state.nativeModifiedMs == Q_INT64_C(1792923707000));
+    CHECK_EQ(state.raw.value("native_writeback").toString(), "verified");
+    CHECK(!kobalt::readState(other).exists);
+
+    NativeSnapshot snapshot;
+    snapshot.book = book;
+    snapshot.location = "OEBPS/c2H.xhtml#point(/1/4/154/1)";
+    snapshot.modifiedMs = Q_INT64_C(1792930000000);
+    snapshot.status = 1;
+    snapshot.valid = true;
+    QString error;
+    CHECK(kobalt::writePosition(book, "/body/DocFragment[6]/body/p[80]/text().0", snapshot, &error));
+    CHECK_EQ(error, "");
+    state = kobalt::readState(book);
+    CHECK(state.exists);
+    CHECK_EQ(state.position, "/body/DocFragment[6]/body/p[80]/text().0");
+    CHECK_EQ(state.nativeLocation, snapshot.location);
+    CHECK(state.nativeModifiedMs == snapshot.modifiedMs);
+    CHECK(state.percent == 5);  // Kobalt's other fields are kept
+    CHECK_EQ(state.raw.value("fingerprint").toString(), "abc");
+    CHECK(state.raw.value("schema").toInt() == 1);
+    CHECK(state.raw.value("sync_pending").toBool() == false);
+    CHECK(!kobalt::writePosition(other, "/body", snapshot, &error));  // no record anywhere
+    CHECK(!error.isEmpty());
+    {
+        QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", "fixture");
+        db.setDatabaseName(kobalt::databasePath());
+        CHECK(db.open());
+        QSqlQuery query(db);
+        CHECK(query.exec("SELECT revision, format, CAST(payload AS BLOB), identity FROM book_state"));
+        CHECK(query.next());
+        CHECK(query.value(0).toInt() == 4);  // one change, one more revision
+        CHECK(query.value(1).toInt() == 1);
+        const QByteArray stored = query.value(2).toByteArray();
+        CHECK(!stored.contains('\n'));  // compact, as Kobalt writes it
+        CHECK(QJsonDocument::fromJson(stored).object().value("book").toString() == book);
+        CHECK_EQ(query.value(3).toString(), book);
+        CHECK(!query.next());
+        db.close();
+    }
+    QSqlDatabase::removeDatabase("fixture");
+
+    // A legacy file for a book the database has no row for (not imported yet,
+    // or Kobalt before beta 4).
+    {
+        QFile file(kobalt::statePath(other));
+        CHECK(file.open(QIODevice::WriteOnly));
+        file.write("{\"book\":\"" + other.toUtf8() + "\",\"schema\":1,\"position\":\"/body/DocFragment[2].0\","
+                   "\"native_writeback\":\"time-only\"}");
+    }
+    state = kobalt::readState(other);
+    CHECK(state.exists);
+    CHECK_EQ(state.position, "/body/DocFragment[2].0");
+    CHECK(state.percent == -1);
+    CHECK(state.modifiedMs > 0);
+    snapshot.book = other;
+    CHECK(kobalt::writePosition(other, "/body/DocFragment[3]/body/p[1]/text().4", snapshot, &error));
+    state = kobalt::readState(other);
+    CHECK_EQ(state.position, "/body/DocFragment[3]/body/p[1]/text().4");
+    CHECK_EQ(state.nativeLocation, snapshot.location);
+    CHECK_EQ(state.raw.value("native_writeback").toString(), "time-only");
+    // The database row still wins over a leftover file for the first book.
+    CHECK_EQ(kobalt::readState(book).position, "/body/DocFragment[6]/body/p[80]/text().0");
+}
+
 int main(int argc, char **argv) {
     QCoreApplication app(argc, argv);
     const QString fixture = argc > 1 ? QString::fromLocal8Bit(argv[1]) : QString("tests/fixture.epub");
     testEpub(fixture);
+    testKobaltState();
     CHECK(resolvePath("OEBPS/content.opf", "Text/ch1.xhtml") == "OEBPS/Text/ch1.xhtml");
     CHECK(resolvePath("OEBPS/content.opf", "../extra/ch3.xhtml") == "extra/ch3.xhtml");
     CHECK(resolvePath("content.opf", "./a/./b.xhtml") == "a/b.xhtml");

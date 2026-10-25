@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends qtbase5-dev zlib1g-dev pkg-config
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends qtbase5-dev libqt5sql5-sqlite zlib1g-dev pkg-config
       - run: make test
   kobo:
     runs-on: ubuntu-latest

@@ -11,5 +11,6 @@ cd "$root"
 tar czf - --exclude=./.git --exclude=./build --exclude='*.o' --exclude='*.moc' --exclude='*.so' \
     --exclude=KoboRoot.tgz --exclude=tests/units_test --exclude=tests/fixture.epub . |
     ssh "$host" "rm -rf $remote && mkdir -p $remote && tar xzf - -C $remote"
-ssh "$host" "cd $remote && (docker image inspect $image >/dev/null 2>&1 || docker build -q -t $image -f tools/Dockerfile.hosttest tools) \
+# The image build is cached; it only reruns when the Dockerfile changed.
+ssh "$host" "cd $remote && docker build -q -t $image -f tools/Dockerfile.hosttest tools >/dev/null \
     && docker run --rm -v \"\$PWD:/src\" -w /src $image make test"

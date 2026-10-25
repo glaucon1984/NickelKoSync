@@ -14,7 +14,8 @@ Nickel's built-in reader, without changing either of them.
 
 ## How it works
 
-Kobalt stores each book's position as a CREngine XPointer in its own saved state, and
+Kobalt stores each book's position as a CREngine XPointer in its own saved state (a record
+in `.adds/kobalt/kobalt.sqlite` since Kobalt v1.0-beta.4, a JSON file per book before), and
 writes Nickel's library database like Nickel's reader does. The mod lives in the same
 process as both readers and works at that storage layer:
 
